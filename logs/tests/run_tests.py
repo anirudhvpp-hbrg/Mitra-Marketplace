@@ -3528,7 +3528,8 @@ def _lib_home():
     if "lib_home" in S:
         return S["lib_home"]
     home, arch = TMP / "home-lib", TMP / "archive" / "normalized"
-    write_config(home, 7486, model_budget_mb=100, meeting_archive=str(arch))
+    # its own port and its own memo folder: the shared one holds memos written by other cases, and the library lists every memo it finds
+    write_config(home, 7485, model_budget_mb=100, meeting_archive=str(arch), connectors={"dropbox": str(TMP / "dropbox-lib")})
     (home / "twinmind").mkdir(parents=True, exist_ok=True)
     (home / "twinmind" / "project_names.json").write_text(json.dumps({"acme": "Acme"}), "utf-8")
     def rec(folder, name, date, client, people, body):
@@ -3852,6 +3853,9 @@ def _():
 
 @case("K", "stopping everything leaves no app, worker or model process behind")
 def _():
+    for other in (S.get("nm_home"), S.get("lib_home")):       # homes that later cases started apps in
+        if other:
+            cli("stop", home=other)
     code, out = cli("stop")
     t.assertIn("Stopped", out)
     t.assertIn("No app is running", cli("apps")[1])

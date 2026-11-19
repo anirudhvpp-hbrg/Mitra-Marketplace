@@ -3,7 +3,7 @@
 ## How to run
 
 ```
-mitra-marketplace test             all 343 automated cases, about 26 minutes (most of it two long recordings and the real-model cases)
+mitra-marketplace test             all 361 automated cases, about 25 minutes (most of it two long recordings and the real-model cases)
 mitra-marketplace test --quick     skips the cases that load real models; about four minutes
 mitra-marketplace test T040 T227   only the named cases
 python logs/tests/run_tests.py --list    print every case with its number
@@ -12,6 +12,38 @@ python logs/tests/run_tests.py --list    print every case with its number
 The suite (`logs/tests/run_tests.py`) starts a private launcher on port 7499 with its own temporary home folder and with window opening switched off, so your real memory log, apps, config and Dropbox are not touched and nothing appears on screen. Apps are started the way an icon starts them, as separate processes. Each run writes a report to `logs/tests/results/` with a per-area table and one line per case. Exit code is 0 only when nothing failed.
 
 ## Last result
+
+2026-11-20, Windows 11, Python 3.13, version 0.10.0, 361 cases.
+
+| Run | Result | Report |
+|---|---|---|
+| Full suite | **357 of 361**; the four failures are explained below | `logs/tests/results/2026-11-20-011118.md` |
+| The long-recording cases again, alone (T309 to T311) | 3 of 3 | `2026-11-20-012505.md` |
+| Quick suite after the fixes to the tests (real-model cases skipped) | 343 of 343, 18 skipped | `2026-11-20-012850.md` |
+
+**There is no single full run with every case passing on the final code.** The four failures of the full run:
+
+- **T310, real and not explained.** On the eight-minute synthesized recording the accurate speech model peaked at 1,066 MB, over the 1,024 MB ceiling. It was not stopped, because the governor stops a model only above the ceiling plus ten percent for a second and a half. It has peaked at 964 to 980 MB in every other run, including the same case run alone afterwards. The names prompt added that week was suspected and measured: 973 MB with no prompt, three names or forty (`logs/scripts/measure_prompt_memory.py`). Seen once in four runs of that case. **Open.**
+- **T343 and T348, the tests.** The library cases counted every memo in the shared test folder, which by then held memos from other cases (17 meetings, not 3). They now use their own memo folder and their own port.
+- **T361, the test.** "Nothing is left running" stopped only the main test home; apps started in two other test homes by later cases were still up. It now stops those too.
+
+The 18 new cases are areas P (the meeting library, T343 to T351) and Q (live meetings, T352 to T360); "stopping everything" is T361.
+
+### Live meetings: what was checked by hand, 2026-11-20
+
+| Checked | How | Result |
+|---|---|---|
+| Recording | Started from the Live tab; two minutes of synthesized two-voice speech played through the speakers | Both tracks written in aligned half-minute pieces; the recorder held 12 MB |
+| Transcript as it grows | Watched in the page | Lines appeared piece by piece. Two faults found and fixed: an invented "Thank you" from the silent microphone track, and a sentence lost where it straddled two pieces. Replayed on the saved pieces afterwards: all 13 sentences, none invented |
+| Notes typed during the meeting | Typed in the page | In the memo, as written |
+| Stop, then the memo | "Stop and write the memo" | The full pipeline ran on the recording; the transcript was right (name and "40 lakh rupees" included), three action items with the right owners |
+| Noticing a meeting | A copy of the recorder named like a call app, recording from the microphone | The banner "Zoom is using the microphone. It looks like a meeting. Do you want me to record it?" appeared within five seconds; "Not this one" dismissed it; it cleared when the program stopped |
+
+**Not checked:** a real Teams, Zoom or browser call; a real voice at the microphone (the room was silent, so "the microphone track is you" has only been tested on made-up tracks); a meeting of hours; two people talking at once; what happens when the laptop sleeps mid-meeting. The live transcript's speech model is a provisional choice (the smallest multilingual one) and wrote the owner's name wrongly; the survey of candidates for that role on at least a hundred held-out cases has not been done.
+
+One thing found on this machine: Windows' own list of which program last used the microphone (the one behind Settings > Privacy) is not updated on this build, so meeting detection reads the audio sessions instead (`mitra-ear who`), with that list as a second source.
+
+## Result of 2026-11-14 (0.9.0)
 
 2026-11-14, Windows 11, Python 3.13, version 0.9.0: **343 of 343 passed**, none skipped, in 1523 seconds. Report: `logs/tests/results/2026-11-14-142010.md`. This run is on the final code.
 
@@ -116,6 +148,8 @@ What the runs for 0.6.0 found:
 | M. Files | 52 | **Structure kept (25):** Word levels, emphasis, links, nested and numbered lists, merged cells, unstyled documents; PDF headings, paragraphs, page breaks, lists, addresses, running headers; PowerPoint titles, levels, tables; HTML tables, lists, quotes; RTF and ODT; EPUB reading order. **Which app opens what (3).** **Drop to open (14):** on the launcher, on the right app, on the wrong app, TwinMind, unknown app, unsafe names, other sites, the log, every page. **Windows (10):** preview writes nothing, one entry per app, types from the manifests, Default apps, the command run, never sets a default, user settings only, Start menu, the handler, paths with spaces |
 | N. TwinMind on real speech | 30 | **Speakers and sentences (7):** a sentence goes to whoever was talking, an opening word stays with its sentence, repeats and noise tags removed. **Long recordings (6):** windows of five minutes, speakers matched across a join by the overlap or by elimination and never guessed, cuts made in pauses. **Memory (3):** a model stopped at its own cap is run again up to the ceiling, never over it; allowances are the ones measured on a real call. **Notes (6):** plain titles, placeholders and pasted lines removed, a cut-off action list keeps its finished items, commitments quoted one sentence each. **Who is who (4):** speakers listed, renamed everywhere, refused outside the TwinMind folder. **Real models (3):** a 9-minute two-voice recording end to end |
 | O. Taking turns | 31 | **The line for the model (8):** nobody turned away for waiting, a question ahead of a long job, first come first served, what the model is doing, a waiter whose caller has gone, a released waiter, a running model whose caller has gone, a stale ticket. **Saved pieces (7):** speech pieces and speaker windows saved and never redone, pause and resume, step-down from the piece that was refused, fast and accurate, a changed file starts afresh, length read without converting. **The line of recordings (7):** estimate, joining the line, reorder and remove, the next one written by itself, a stopped job listed and discarded, nothing left after a finished job, pause and stop when idle. **Screens and report (2).** **With real models (7):** a question waits and is answered, a cancelled question leaves the line, the notes model steps aside, a job stopped part way resumes without redoing saved windows, a model stopped by hand stops the job, closing the app stops its job |
+| P. The meeting library | 9 | An archive of transcripts listed newest first with date, project and people; filters; one meeting with its transcript as recorded and promises quoted; tags and projects saved outside the archive, which is never written to; search inside; a summary shown under its meeting and across its project; names put right; the names reaching the speech model; the page |
+| Q. Live meetings | 9 | Who is recording from a microphone; only an app that declares it may ask; a call app noticed and un-noticed; two tracks in pieces of equal length that end cleanly; a line carried across a piece boundary; invented phrases on a silent piece dropped; pieces put together and the owner's voice found; recordings left without a memo; the Live tab |
 
 ## When to run
 

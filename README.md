@@ -29,9 +29,9 @@ This table is the honest state on 2026-11-20. "Tested" means run by the automate
 | Launcher, one process per app, file opening, Windows registration | Works. Tested |
 | Mitra PDF, Markdown Reader, Anything to MD | Work. Tested. No search, outline or read-aloud in Mitra PDF; scanned pages have no text |
 | Ask Mitra (one small question-and-answer model) | Works. Small models are quick and private and make mistakes |
-| Memory governor: one model at a time, a waiting line, per-model caps | Works. Tested, and held on a real 2 h 25 min recording (peak 975 MB under a 1,024 MB ceiling) |
+| Memory governor: one model at a time, a waiting line, per-model caps | Works. Tested, and held on a real 2 h 25 min recording (peak 975 MB under a 1,024 MB ceiling). One open case: a model is stopped only above the ceiling plus ten percent, and the speech model was once seen at 1,066 MB |
 | TwinMind: a recording or transcript in, a memo out | Works end to end, including a 2 h 25 min call with pause, hard stop and resume. **The memo of a long meeting is not good enough**: it is a list of short section notes, not a summary of the meeting |
-| TwinMind: meeting library (old and new meetings, tags, projects, search inside, across-meetings view, people list) | Built 2026-11-14. Its own tests pass and the page was checked against a real archive of 2,597 transcripts. The full suite has not been rerun since |
+| TwinMind: meeting library (old and new meetings, tags, projects, search inside, across-meetings view, people list) | Built 2026-11-14. Tested, and the page was checked against a real archive of 2,597 transcripts |
 | TwinMind: names spelt right | A people list is given to the speech model and wrong spellings are replaced. Tested on text; not yet proven on real audio |
 | TwinMind: notice a meeting and offer to record it | Built 2026-11-20, Windows only, and only while TwinMind is open. Tested with a stand-in call app; not yet seen with a real Teams or Zoom call |
 | TwinMind: record a meeting and show the transcript as it runs | Built 2026-11-20. Checked end to end with two minutes of synthesized speech; **not yet run on a real meeting or for hours**. The live model is provisional and misspells names |
@@ -279,7 +279,7 @@ Every process appends one line per event to `~/.mitra/memory/events/<date>.jsonl
 | P | The meeting library: an archive listed and filtered, tags kept outside it, search inside, names put right |
 | Q | Live meetings: who is using the microphone, a call app noticed and un-noticed, two tracks in equal pieces, a line carried across a piece boundary, invented phrases dropped, tracks put together, the Live tab |
 
-Last full run: 343 of 343 on 2026-11-14 (version 0.9.0). Nine library cases were added afterwards and pass; the full suite has not been rerun with them. A passing suite has let a broken product through before (the automated recordings are synthesized speech), so audio changes are also run on a real recording and the memo read. `TEST_PLAN.md` records every run, every failure and what each one turned out to be.
+Last full run: 357 of 361 on 2026-11-20 (version 0.10.0). Three of the four failures were faults in new tests, since fixed and passing; the fourth is real and open: the speech model once peaked at 1,066 MB, over the 1,024 MB ceiling, and did not do so again when rerun. A passing suite has let a broken product through before (the automated recordings are synthesized speech), so audio changes are also run on a real recording and the memo read. `TEST_PLAN.md` records every run, every failure and what each one turned out to be.
 
 ## Repository layout
 
