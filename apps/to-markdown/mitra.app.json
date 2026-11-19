@@ -1,0 +1,29 @@
+{
+  "id": "to-markdown",
+  "name": "Anything to MD",
+  "tagline": "Any file into Markdown",
+  "glyph": "convert",
+  "category": "Documents",
+  "version": "0.9.0",
+  "description": "Convert PDF, Word, PowerPoint, Excel, HTML, CSV, EPUB, notebooks and code into clean Markdown, and save it beside the original.",
+  "connectors": [],
+  "needs": [],
+  "uses": [
+    "convert"
+  ],
+  "opens": [
+    ".docx",
+    ".pptx",
+    ".xlsx",
+    ".html",
+    ".htm",
+    ".csv",
+    ".tsv",
+    ".json",
+    ".ipynb",
+    ".epub",
+    ".rtf",
+    ".odt",
+    "*"
+  ]
+}

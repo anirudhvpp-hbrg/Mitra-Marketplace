@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TwinMind</title>
+<link rel="stylesheet" href="/static/mitra.css">
+<style>
+  .lead { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .runs { margin-top: 14px; font-size: 14px; line-height: 20px; } .runs summary { cursor: pointer; color: var(--muted); width: max-content; max-width: 100%; }
+  .runs[open] summary { margin-bottom: 6px; }
+  .drop { border: 1.5px dashed var(--border-strong); border-radius: var(--r-md); padding: 18px; text-align: center; color: var(--muted); transition: .18s var(--ease); }
+  .drop.has { border-style: solid; border-color: var(--action); color: var(--ink); background: linear-gradient(180deg, var(--glow-c), transparent); }
+  .steps { display: grid; gap: 0; margin-top: 14px; }
+  .step { display: grid; grid-template-columns: 26px 130px 1fr; gap: 10px; align-items: start; padding: 9px 0; position: relative; font-size: 14px; line-height: 20px; }
+  @media (max-width: 560px) { .step { grid-template-columns: 26px 1fr; } .step > span:last-child { grid-column: 2; } }
+  .step:not(:last-child)::after { content: ""; position: absolute; left: 12px; top: 30px; bottom: -6px; width: 2px; background: var(--line); }
+  .dot { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--chip); color: var(--muted); font-size: 12px; font-weight: 700; z-index: 1; }
+  .step.done .dot { background: var(--ok); color: #fff; } .step.skipped .dot { background: var(--amber-400); color: var(--navy-950); }
+  .step.na .dot { background: var(--chip); color: var(--muted); } .step.na b { color: var(--muted); font-weight: 500; }   /* not for this input: nothing went wrong */
+  .step.running .dot { background: var(--action); color: var(--navy-950); animation: pulse 1.2s infinite; }
+  .step span:last-child { color: var(--muted); overflow-wrap: anywhere; }
+  .bar2 { height: 6px; border-radius: 4px; background: var(--chip); overflow: hidden; margin-top: 6px; } .bar2 i { display: block; height: 100%; background: var(--action); transition: width .4s var(--ease); }
+  .need { display: grid; grid-template-columns: 120px auto 1fr; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 20px; }
+  .need:last-of-type { border: 0; } .need b { text-transform: capitalize; } .need span:last-child { color: var(--muted); }
+  .mtg { display: block; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); color: inherit; margin-bottom: 10px;
+    transition: transform .18s var(--ease), border-color .18s, box-shadow .18s; }
+  .mtg:hover { text-decoration: none; transform: translateY(-2px); border-color: var(--border-strong); box-shadow: var(--elev-2); }
+  .mtg h4 { margin: 0 0 4px; font: 600 17px/24px var(--serif); } .mtg p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+  .mtg .meta { display: flex; gap: 10px; margin-top: 8px; font-size: 12px; line-height: 16px; color: var(--muted); }
+  .hit { padding: 10px 14px; border-left: 3px solid var(--action-2); background: var(--chip); border-radius: 0 8px 8px 0; margin-bottom: 8px; font-size: 14px; line-height: 20px; }
+  .names, .box { margin-top: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); font-size: 14px; line-height: 20px; }
+  .box.live { border-color: var(--action); }
+  .box h4 { margin: 0 0 2px; font: 600 16px/22px var(--serif); overflow-wrap: anywhere; }
+  .name { display: grid; grid-template-columns: 150px 1fr; gap: 4px 12px; align-items: center; margin-top: 10px; }
+  .name label { margin: 0; font-weight: 600; } .name input { margin: 0; }
+  .name q { grid-column: 1 / -1; color: var(--muted); font-size: 13px; line-height: 18px; quotes: "\201C" "\201D"; }
+  @media (max-width: 560px) { .name { grid-template-columns: 1fr; } }
+  .hit a { font-weight: 600; } mark { background: var(--amber-200); color: var(--navy-950); border-radius: 3px; padding: 0 2px; }
+  .speed { display: grid; gap: 6px; margin-top: 14px; } .speed label { display: flex; gap: 8px; align-items: baseline; margin: 0; font-weight: 400; cursor: pointer; }
+  .speed input { width: auto; margin: 0; flex: none; }
+  .kept { display: grid; grid-template-columns: auto 1fr auto; gap: 4px 10px; align-items: center; margin: 8px 0; font-size: 13px; } .kept .bar2 { margin: 0; }
+  .q { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; } .q:last-of-type { border: 0; }
+  .q span.n { flex: 1; min-width: 160px; overflow-wrap: anywhere; } .q button { min-height: 28px; padding: 2px 10px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 18px; border-bottom: 1px solid var(--line); }
+  .tabs button { border: 0; background: none; border-radius: 0; padding: 10px 14px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; min-height: 44px; }
+  .tabs button.on { color: var(--ink); border-bottom-color: var(--action); }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0 14px; } .filters select, .filters input { width: auto; margin: 0; min-width: 130px; flex: 0 1 auto; }
+  .filters input#q { flex: 1 1 240px; }
+  .row2 { display: grid; grid-template-columns: 92px 1fr auto; gap: 12px; align-items: baseline; padding: 11px 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--panel); margin-bottom: 8px; cursor: pointer; color: inherit; text-align: left; width: 100%; font-weight: 400; }
+  .row2:hover { border-color: var(--border-strong); } .row2 b { font: 600 16px/22px var(--serif); overflow-wrap: anywhere; } .row2 .when { color: var(--muted); font-size: 13px; }
+  .row2 .sub { color: var(--muted); font-size: 13px; line-height: 18px; margin-top: 2px; }
+  @media (max-width: 560px) { .row2 { grid-template-columns: 1fr; gap: 2px; } }
+  .tag { display: inline-block; font-size: 12px; line-height: 18px; padding: 0 8px; border-radius: 99px; background: var(--chip); color: var(--ink); margin: 0 4px 2px 0; white-space: nowrap; }
+  .tag.proj { background: var(--navy-800); color: #fff; } .tag.sum { background: var(--ok); color: #fff; }
+  .tline { display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 3px 0; font-size: 15px; line-height: 23px; } .tline .t { color: var(--muted); font: 12px/23px var(--mono); }
+  .tline b { color: var(--action-2, var(--ink)); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+  .stat3 { display: flex; gap: 22px; flex-wrap: wrap; margin: 6px 0 14px; } .stat3 div b { display: block; font: 600 24px/30px var(--serif); } .stat3 div span { color: var(--muted); font-size: 13px; }
+  .months { display: flex; gap: 3px; align-items: flex-end; height: 56px; margin: 8px 0 4px; } .months i { flex: 1; background: var(--action); border-radius: 2px 2px 0 0; min-height: 2px; }
+  .item { padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; line-height: 20px; } .item:last-child { border: 0; } .item a { color: var(--muted); font-size: 12px; cursor: pointer; }
+  .person { display: grid; grid-template-columns: 200px 1fr auto; gap: 8px; margin-bottom: 8px; } .person input { margin: 0; } @media (max-width: 560px) { .person { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="split">
+  <aside id="files"></aside>
+  <main><div class="wrap" style="max-width:1000px">
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" data-tab="lib" class="on">Meetings</button><button role="tab" data-tab="new">New memo</button>
+      <button role="tab" data-tab="across">Across meetings</button><button role="tab" data-tab="people">People</button>
+    </div>
+    <section id="tab-lib">
+      <div id="libList">
+        <div class="filters">
+          <input id="q" placeholder="Find a meeting: title, person, project, date" aria-label="Find a meeting">
+          <select id="fProject" aria-label="Project"></select><select id="fYear" aria-label="Year"></select>
+          <select id="fSummary" aria-label="Summary"><option value="">With or without summary</option><option value="yes">Has a summary</option><option value="no">No summary yet</option></select>
+          <button id="inside">Search inside transcripts</button>
+        </div>
+        <div class="muted small" id="libCount"></div>
+        <div id="hits" style="margin:10px 0"></div>
+        <div id="meetings"><div class="skeleton" style="height:90px"></div></div>
+        <div class="row" style="margin-top:10px"><button id="more" hidden>Show more</button></div>
+      </div>
+      <div id="detail" hidden></div>
+    </section>
+    <section id="tab-across" hidden>
+      <div class="filters"><select id="aProject" aria-label="Project"></select><select id="aYear" aria-label="Year"></select></div>
+      <div id="acrossBody"><div class="muted">Pick a project to see its meetings over time, who was in them, and the action items and decisions gathered from every summary.</div></div>
+    </section>
+    <section id="tab-people" hidden>
+      <div class="card" style="padding:22px"><h2>People</h2>
+        <p class="muted small" style="margin:6px 0 14px">Names that must come out right. Each name is given to the speech model before it listens, and any wrong spelling listed beside it is replaced in the transcript before notes are written.</p>
+        <div id="peopleRows"></div>
+        <div class="row" style="margin-top:8px"><button id="addPerson">Add a person</button><button class="primary" id="savePeople">Save</button><span class="muted small" id="peopleSaved"></span></div>
+        <p class="muted small" style="margin:16px 0 6px">Heard most often in your meetings (also given to the speech model):</p><div id="heard"></div>
+      </div>
+    </section>
+    <section id="tab-new" hidden>
+    <div id="unfinished"></div>
+    <div class="lead">
+      <div class="card" style="padding:22px">
+        <h2>New meeting</h2>
+        <div class="drop" id="picked" style="margin-top:14px">Pick a recording or a transcript on the left, or drop one here</div>
+        <label for="title">Title (leave empty and the model names it)</label><input id="title">
+        <label for="att">Who was there, comma separated (optional)</label><input id="att" placeholder="Priya, Sam, Anirudh">
+        <div class="speed" id="speed" hidden role="radiogroup" aria-label="Speed">
+          <label><input type="radio" name="speed" value="accurate" checked><span><b>Accurate</b> <span class="muted" id="spA"></span></span></label>
+          <label><input type="radio" name="speed" value="fast"><span><b>Fast</b> <span class="muted" id="spF"></span></span></label>
+          <span class="muted small" id="spNote"></span>
+        </div>
+        <div class="row" style="margin-top:16px"><button class="primary" id="run" disabled>Write the memo</button><span class="muted small" id="where"></span></div>
+        <details class="runs"><summary id="runsum">What will run</summary>
+          <div id="needs"></div>
+          <p class="small muted" style="margin:10px 0 0">One model at a time, each unloaded before the next. Every finished piece is saved, so you can close this window, and a job that stops picks up where it was. A stage that is not ready is skipped and the memo says so.</p>
+        </details>
+        <div id="job"></div>
+        <div id="lineBox"></div>
+        <div id="finished"></div>
+      </div>
+    </div>
+    </section>
+  </div></main>
+</div>
+<script src="/static/sdk.js"></script>
+<script>
+const M = mitra, $ = (s) => document.querySelector(s);
+const api = (p, o) => M.api('/api/apps/twinmind/' + p, o);
+const open = (path) => '/apps/markdown-reader/?path=' + encodeURIComponent(path);
+const dur = (s) => s == null ? '' : s < 90 ? `${Math.round(s)} s` : s < 3600 ? `${Math.round(s / 60)} min` : `${Math.floor(s / 3600)} h ${String(Math.round(s % 3600 / 60)).padStart(2, '0')} min`;
+const STAGES = { diarize: 'Who speaks when', transcribe: 'What was said', gist: 'The gist, quoted', understand: 'Notes and action items', write: 'The memo' };
+const UNIT = { diarize: 'windows', transcribe: 'pieces', understand: 'sections' };
+let path = null, pickedName = null, following = null, poll = null, est = null;
+
+// a memo's name starts with when the meeting was written up ("2026-11-13 0505 Title"); editing the
+// file later (naming speakers) changes its time on disk, so the name is the date to show
+const when = (m) => { const d = m.name.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2})(\d{2}) /); return d ? new Date(+d[1], d[2] - 1, +d[3], +d[4], +d[5]) : new Date(m.mtime * 1000); };
+// ---- the library: every meeting, old and new ------------------------------------------------
+let lib = { rows: [], total: 0, facets: null }, shown = 80;
+const fmtDate = (d) => new Date(d + 'T12:00:00').toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' });
+const mins = (m) => m ? (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`) : '';
+function libQuery(extra = '') {
+  const p = new URLSearchParams({ q: $('#q').value.trim(), project: $('#fProject').value, year: $('#fYear').value, summary: $('#fSummary').value, limit: shown });
+  return 'library?' + p + extra;
+}
+async function loadMeetings(first) {
+  const r = await api(libQuery(first ? '' : '&refresh=0')); lib = r;
+  if (first || !$('#fProject').options.length) {
+    const opt = (list, all) => `<option value="">${all}</option>` + list.map(([v, n]) => `<option value="${M.esc(v)}">${M.esc(v)} (${n})</option>`).join('');
+    const keepP = $('#fProject').value, keepY = $('#fYear').value;
+    $('#fProject').innerHTML = opt(r.facets.projects, 'All projects'); $('#fYear').innerHTML = opt(r.facets.years, 'All years');
+    $('#fProject').value = keepP; $('#fYear').value = keepY;
+    $('#aProject').innerHTML = opt(r.facets.projects.filter(([v]) => v !== '(none)'), 'Pick a project'); $('#aYear').innerHTML = opt(r.facets.years, 'All years');
+  }
+  $('#libCount').textContent = `${r.total} of ${r.facets.total} meetings · ${r.facets.with_summary} have a summary` + (r.archive ? ' · old meetings are read from your archive and never changed' : '');
+  $('#meetings').innerHTML = r.rows.length ? r.rows.map((m) => `<button class="row2" data-id="${m.id}"><span class="when">${fmtDate(m.date)}</span>
+    <span><b>${M.esc(m.title)}</b><div class="sub">${m.project ? `<span class="tag proj">${M.esc(m.project)}</span>` : ''}${m.tags.map((t) => `<span class="tag">${M.esc(t)}</span>`).join('')}${M.esc(m.speakers.slice(0, 5).join(', '))}</div></span>
+    <span class="when">${m.has_summary ? '<span class="tag sum">summary</span>' : ''}${mins(m.minutes)}</span></button>`).join('')
+    : '<div class="empty"><div>No meeting matches. Clear a filter, or search inside the transcripts.</div></div>';
+  $('#more').hidden = r.total <= r.rows.length;
+}
+$('#meetings').onclick = (e) => { const b = e.target.closest('[data-id]'); if (b) openMeeting(b.dataset.id); };
+$('#more').onclick = () => { shown += 120; loadMeetings(); };
+let ft; const refilter = () => { clearTimeout(ft); ft = setTimeout(() => { shown = 80; $('#hits').innerHTML = ''; loadMeetings(); }, 200); };
+$('#q').oninput = refilter; ['#fProject', '#fYear', '#fSummary'].forEach((x) => ($(x).onchange = refilter));
+$('#inside').onclick = async () => {
+  const q = $('#q').value.trim(); if (q.length < 3) return ($('#hits').innerHTML = '<div class="muted small">Type at least three letters, then search inside.</div>');
+  $('#hits').innerHTML = '<div class="muted small">Reading every transcript…</div>';
+  const hits = await api('inside?q=' + encodeURIComponent(q));
+  const rx = new RegExp('(' + q.split(/\s+/).filter((w) => w.length > 2).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+  $('#hits').innerHTML = hits.length ? `<div class="muted small" style="margin-bottom:6px">${hits.length} meetings say this. Passages are quoted exactly.</div>` + hits.map((h) => `<div class="hit">${M.esc(h.text).replace(rx, '<mark>$1</mark>')}
+    <div class="small"><a href="#" data-id="${h.id}">${M.esc(h.meeting)}</a> <span class="muted">${fmtDate(h.date)}${h.project ? ' · ' + M.esc(h.project) : ''}</span></div></div>`).join('')
+    : '<div class="muted small">No transcript says that.</div>';
+};
+$('#hits').onclick = (e) => { const a = e.target.closest('[data-id]'); if (a) { e.preventDefault(); openMeeting(a.dataset.id, $('#q').value.trim()); } };
+
+// One meeting, in the page: the summary, and the transcript as it is.
+async function openMeeting(id, find) {
+  showTab('lib'); $('#libList').hidden = true; const box = $('#detail'); box.hidden = false; box.innerHTML = '<div class="skeleton" style="height:200px"></div>'; scrollTo({ top: 0 });
+  const m = await api('meeting?id=' + id);
+  const tline = (l) => { const x = l.match(/^\[?(\d{1,2}:\d{2}(?::\d{2})?)\]?\s*(?:([^:]{1,40}):\s+)?(.*)$/); return x ? `<div class="tline"><span class="t">${x[1]}</span><span>${x[2] ? `<b>${M.esc(x[2])}</b> ` : ''}${M.esc(x[3])}</span></div>` : `<div class="tline"><span></span><span>${M.esc(l)}</span></div>`; };
+  box.innerHTML = `<div class="row" style="margin-bottom:10px"><button id="back">← All meetings</button><span class="muted small" style="margin-left:auto">${m.src === 'archive' ? 'From your archive (read only)' : 'Written by Mitra'}</span></div>
+    <div class="card" style="padding:22px">
+      <h2 style="overflow-wrap:anywhere">${M.esc(m.title)}</h2>
+      <div class="muted" style="margin:4px 0 10px">${fmtDate(m.date)}${m.minutes ? ' · ' + mins(m.minutes) : ''}${m.speakers.length ? ' · ' + M.esc(m.speakers.join(', ')) : ''}</div>
+      <div class="filters"><input id="mProject" placeholder="Project" value="${M.esc(m.project)}" aria-label="Project" style="min-width:160px"><input id="mTags" placeholder="Tags, comma separated" value="${M.esc(m.tags.join(', '))}" aria-label="Tags" style="flex:1 1 220px"><button id="mSave">Save tags</button><span class="muted small" id="mSaved"></span></div>
+      <div class="tabs" id="mTabs"><button data-m="sum" class="on">Summary</button><button data-m="tr">Transcript <span class="muted">${m.transcript_lines} lines</span></button><button data-m="com">Promised or asked <span class="muted">${m.commitments.length}</span></button></div>
+      <div id="m-sum">${m.summary ? `<div class="md">${M.md(m.summary)}</div>` : `<div class="empty"><div>This meeting has no summary yet. The transcript is in the next tab, exactly as recorded.</div>
+        <button class="primary" id="mWrite" style="margin-top:12px">Write the summary</button><div class="muted small" style="margin-top:8px">Runs on this device. The summary is saved in Mitra's own folder; the archive is not changed.</div></div>`}</div>
+      <div id="m-tr" hidden>${m.transcript.split('\n').filter((l) => l.trim()).map(tline).join('')}</div>
+      <div id="m-com" hidden>${m.commitments.length ? `<p class="muted small">Every sentence that sounds like a promise or a request, quoted as spoken. No model.</p>` + m.commitments.map((c) => `<div class="item">${M.esc(c)}</div>`).join('') : '<div class="muted">None found.</div>'}</div>
+    </div>`;
+  $('#back').onclick = () => { box.hidden = true; $('#libList').hidden = false; };
+  $('#mTabs').onclick = (e) => { const b = e.target.closest('[data-m]'); if (!b) return; $('#mTabs').querySelectorAll('button').forEach((x) => x.classList.toggle('on', x === b)); ['sum', 'tr', 'com'].forEach((k) => ($('#m-' + k).hidden = k !== b.dataset.m)); };
+  $('#mSave').onclick = async () => { await api('meta', { body: { id, project: $('#mProject').value, tags: $('#mTags').value.split(',') } }); $('#mSaved').textContent = 'Saved.'; M.log('action.tag_meeting'); loadMeetings(true); };
+  if ($('#mWrite')) $('#mWrite').onclick = async () => { showTab('new'); M.log('action.summarise_old'); await start({ path: m.path, name: m.title, title: m.title, attendees: m.speakers.join(', '), speed: 'accurate' }); };
+  if (find) { $('#mTabs [data-m=tr]').click(); const w = find.split(/\s+/)[0].toLowerCase(); const hit = [...$('#m-tr').children].find((d) => d.textContent.toLowerCase().includes(w)); if (hit) { hit.style.background = 'var(--amber-200)'; hit.scrollIntoView({ block: 'center' }); } }
+}
+
+// ---- tabs ------------------------------------------------------------------------------------
+function showTab(t) {
+  ['lib', 'new', 'across', 'people'].forEach((k) => ($('#tab-' + k).hidden = k !== t));
+  $('#tabs').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  $('#files').style.display = t === 'new' ? '' : 'none';
+  document.querySelector('.split').style.gridTemplateColumns = t === 'new' ? '' : '1fr';   // the file browser belongs to New memo only
+  if (t === 'people') loadPeople();
+  try { history.replaceState(null, '', location.pathname + location.search + '#' + t); } catch {}
+}
+$('#tabs').onclick = (e) => { const b = e.target.closest('[data-tab]'); if (b) { showTab(b.dataset.tab); if (b.dataset.tab === 'lib') { $('#detail').hidden = true; $('#libList').hidden = false; } } };
+
+// ---- across meetings ---------------------------------------------------------------------------
+async function loadAcross() {
+  const project = $('#aProject').value; if (!project) return;
+  $('#acrossBody').innerHTML = '<div class="skeleton" style="height:160px"></div>';
+  const a = await api('across?' + new URLSearchParams({ project, year: $('#aYear').value }));
+  const max = Math.max(1, ...a.months.map((m) => m[1]));
+  const list = (rows, none) => rows.length ? rows.map((x) => `<div class="item">${M.esc(x.text)}<div><a data-id="${x.id}">${fmtDate(x.date)} · ${M.esc(x.meeting)}</a></div></div>`).join('') : `<div class="muted">${none}</div>`;
+  $('#acrossBody').innerHTML = `<div class="card" style="padding:22px"><h2>${M.esc(project)}</h2>
+      <div class="stat3"><div><b>${a.meetings}</b><span>meetings</span></div><div><b>${a.with_summary}</b><span>have a summary</span></div><div><b>${a.first ? fmtDate(a.first) : '–'}</b><span>first</span></div><div><b>${a.last ? fmtDate(a.last) : '–'}</b><span>latest</span></div></div>
+      <div class="months" title="Meetings per month">${a.months.map((m) => `<i style="height:${100 * m[1] / max}%" title="${m[0]}: ${m[1]}"></i>`).join('')}</div>
+      <div class="muted small">${a.months.length ? `${a.months[0][0]} to ${a.months[a.months.length - 1][0]}, meetings per month` : ''}</div>
+      <p style="margin:14px 0 0">${a.people.map(([n, c]) => `<span class="tag">${M.esc(n)} ${c}</span>`).join('')}</p></div>
+    ${a.with_summary < a.meetings ? `<div class="finding" style="margin:14px 0">${a.meetings - a.with_summary} of these meetings have no summary yet, so their action items and decisions are not below. Open a meeting and choose "Write the summary", or line up several: <button id="sumAll">Write summaries for the latest 5 without one</button></div>` : ''}
+    <div class="two" style="margin-top:14px"><div class="card" style="padding:18px"><h3 style="margin-top:0">Action items <span class="muted">${a.actions.length}</span></h3>${list(a.actions, 'None in the summaries so far.')}</div>
+      <div class="card" style="padding:18px"><h3 style="margin-top:0">Decisions <span class="muted">${a.decisions.length}</span></h3>${list(a.decisions, 'None in the summaries so far.')}
+        <h3>Still open <span class="muted">${a.open.length}</span></h3>${list(a.open, 'Nothing recorded as open.')}</div></div>
+    <h3>Meetings</h3>${a.rows.map((m) => `<button class="row2" data-id="${m.id}"><span class="when">${fmtDate(m.date)}</span><span><b>${M.esc(m.title)}</b></span><span class="when">${m.has_summary ? '<span class="tag sum">summary</span>' : ''}${mins(m.minutes)}</span></button>`).join('')}`;
+  const todo = a.rows.filter((m) => !m.has_summary).slice(0, 5);
+  if ($('#sumAll')) $('#sumAll').onclick = async () => {
+    showTab('new'); M.log('action.summarise_project', { n: todo.length });
+    for (const m of todo) { const full = await api('meeting?id=' + m.id); await start({ path: full.path, name: full.title, title: full.title, attendees: full.speakers.join(', '), speed: 'accurate' }); }
+  };
+}
+$('#aProject').onchange = loadAcross; $('#aYear').onchange = loadAcross;
+$('#acrossBody').onclick = (e) => { const b = e.target.closest('[data-id]'); if (b) openMeeting(b.dataset.id); };
+
+// ---- people --------------------------------------------------------------------------------------
+function personRow(p = { name: '', aliases: [] }) { return `<div class="person"><input placeholder="Name, as it should be written" value="${M.esc(p.name)}" data-n><input placeholder="Wrong spellings to replace, comma separated" value="${M.esc(p.aliases.join(', '))}" data-a><button class="ghost" data-x>Remove</button></div>`; }
+async function loadPeople() {
+  const r = await api('people');
+  $('#peopleRows').innerHTML = (r.people.length ? r.people : [{ name: '', aliases: [] }]).map(personRow).join('');
+  $('#heard').innerHTML = r.heard.map((n) => `<span class="tag">${M.esc(n)}</span>`).join('');
+}
+$('#addPerson').onclick = () => $('#peopleRows').insertAdjacentHTML('beforeend', personRow());
+$('#peopleRows').onclick = (e) => { if (e.target.dataset.x != null) e.target.closest('.person').remove(); };
+$('#savePeople').onclick = async () => {
+  const people = [...document.querySelectorAll('.person')].map((d) => ({ name: d.querySelector('[data-n]').value, aliases: d.querySelector('[data-a]').value.split(',').map((x) => x.trim()).filter(Boolean) }));
+  const r = await api('people', { body: { people } }); $('#peopleSaved').textContent = `Saved: ${r.people.length} ${r.people.length === 1 ? 'person' : 'people'}.`; M.log('action.save_people', { n: r.people.length });
+};
+
+// ---- the job running now ----------------------------------------------------------------
+function draw(job) {
+  // every stage is shown from the start, so a long recording reads as "piece 7 of 24", not as stuck
+  const got = Object.fromEntries((job.steps || []).map((s) => [s.stage, s])), prog = job.progress || {};
+  const steps = Object.keys(STAGES).map((k) => got[k] || { stage: k, status: 'waiting', note: '' });
+  const live = job.status === 'running' || job.status === 'starting';
+  const it = job.item || {};
+  const audio = !!job.seconds_audio;
+  const head = `<h4>${M.esc(it.name || 'Starting')}</h4><div class="muted small">${[audio ? dur(job.seconds_audio) : '', audio ? (it.speed === 'fast' ? 'Fast' : it.speed ? 'Accurate' : '') : '',
+    job.resumed ? 'picked up from saved pieces' : ''].filter(Boolean).join(' · ')}</div>`;
+  const rows = steps.map((s, i) => {
+    const p = prog[s.stage], pct = p && p[1] ? Math.round(100 * p[0] / p[1]) : 0;
+    const count = p && p[1] > 1 ? `${p[0]} of ${p[1]} ${UNIT[s.stage]} saved` : '';
+    // a text transcript has no audio to hear: those two stages do not apply, which is not a warning
+    const na = s.status === 'skipped' && /no audio|input is text|already text/i.test(s.note || '');
+    const note = /^[A-Za-z]:\\|^\//.test(s.note || '') ? s.note.split(/[\\/]/).pop() : s.note;   // the memo's path: its name is enough here
+    return `<div class="step ${na ? 'na' : s.status}"><span class="dot">${s.status === 'done' ? '✓' : s.status === 'skipped' ? '–' : i + 1}</span><b>${STAGES[s.stage]}</b>
+      <span>${M.esc(na ? 'not needed for a transcript' : note || (s.status === 'waiting' ? 'to come' : s.status))}${count && s.status === 'running' ? `<div class="bar2"><i style="width:${pct}%"></i></div><span class="small">${count}</span>` : ''}</span></div>`;
+  }).join('');
+  let foot = '';
+  if (live) foot = `<div class="row" style="margin-top:10px"><b style="flex:1">${job.eta_s != null ? `About ${dur(Math.max(job.eta_s, 30))} left` : 'Working'}</b>
+      <button id="pause">Pause</button><button class="ghost" id="stop">Stop</button></div>
+      <div class="muted small" style="margin-top:6px">Every finished piece is saved. You can close this window; if the job stops, it picks up where it was.</div>`;
+  else if (job.status === 'failed') foot = `<div class="finding bad">${M.esc(job.error)}</div>`;
+  else if (job.status === 'paused') foot = '<div class="finding">Paused. The finished pieces are kept; resume it from the top of this page.</div>';
+  else if (job.status === 'stopped') foot = '<div class="finding">Stopped. The finished pieces are kept until you discard them.</div>';
+  else if (job.status === 'done' && job.result && job.result.path) foot = `<div class="finding ok">Done in ${dur(job.seconds)}. <a href="${open(job.result.path)}">Open the memo</a></div><div id="who"></div>`;
+  $('#job').innerHTML = `<div class="box ${live ? 'live' : ''}">${head}<div class="steps">${rows}</div>${foot}</div>`;
+  if (live) {
+    $('#pause').onclick = async (e) => { e.target.disabled = true; e.target.textContent = 'Pausing after this piece…'; await api('pause', { body: {} }); M.log('action.pause'); };
+    $('#stop').onclick = async () => {
+      if (!confirm('Stop now? The piece in hand is lost. Finished pieces are kept until you discard them.')) return;
+      await api('stop', { body: {} }); M.log('action.stop');
+    };
+  }
+}
+function follow(id) {
+  following = id; clearInterval(poll);
+  const tick = async () => {
+    let job; try { job = await M.api('/api/jobs/' + id); } catch { return; }
+    if (following !== id) return;
+    if (job.status === 'done' && job.result && job.result.queued) { following = null; clearInterval(poll); return refresh(); }   // it joined the line
+    draw(job);
+    if (job.status === 'running' || job.status === 'starting') return;
+    clearInterval(poll); following = null; loadMeetings();
+    if (job.status === 'done' && job.result && job.result.path) {
+      if (job.next) $('#finished').insertAdjacentHTML('afterbegin', `<div class="finding ok">${M.esc(job.result.title || 'Memo')} is written. <a href="${open(job.result.path)}">Open the memo</a></div>`);
+      else askNames(job.result.path);
+    }
+    if (job.next) follow(job.next); else refresh();
+  };
+  tick(); poll = setInterval(tick, 1000);
+}
+
+// ---- what is waiting, and what stopped ----------------------------------------------------
+async function refresh() {
+  const st = await api('state');
+  if (st.running && st.running.job && following !== st.running.job) follow(st.running.job);
+  $('#run').textContent = st.running ? 'Add to the line' : 'Write the memo';
+  const line = st.line;
+  $('#lineBox').innerHTML = line.length ? `<div class="box"><b>Next up</b> <span class="muted small">one at a time, in this order${line.every((l) => l.estimate) ? ` · about ${dur(line.reduce((a, l) => a + l.estimate, 0))} in all` : ''}</span>
+    ${line.map((l, i) => `<div class="q"><span class="n">${i + 1}. ${M.esc(l.name)} <span class="muted">${[l.seconds ? dur(l.seconds) : '', l.speed === 'fast' ? 'Fast' : 'Accurate', l.estimate ? 'about ' + dur(l.estimate) : ''].filter(Boolean).join(' · ')}</span></span>
+      <button class="ghost" data-up="${i}" ${i ? '' : 'disabled'} aria-label="Move up">↑</button><button class="ghost" data-down="${i}" ${i < line.length - 1 ? '' : 'disabled'} aria-label="Move down">↓</button><button class="ghost" data-rm="${i}">Remove</button></div>`).join('')}</div>` : '';
+  $('#lineBox').onclick = async (e) => {
+    const d = e.target.dataset, order = line.map((_, i) => i);
+    if (d.rm != null) order.splice(+d.rm, 1);
+    else if (d.up != null) [order[+d.up - 1], order[+d.up]] = [order[+d.up], order[+d.up - 1]];
+    else if (d.down != null) [order[+d.down + 1], order[+d.down]] = [order[+d.down], order[+d.down + 1]];
+    else return;
+    await api('line', { body: { order } }); refresh();
+  };
+  $('#unfinished').innerHTML = st.unfinished.map((u, n) => {
+    const kept = Object.entries(u.progress).filter(([k]) => k in UNIT).map(([k, p]) => `<span class="muted">${STAGES[k]}</span><div class="bar2"><i style="width:${p[1] ? 100 * p[0] / p[1] : 0}%"></i></div><span class="muted">${p[0]} of ${p[1]} saved</span>`).join('');
+    const why = u.state === 'paused' ? 'You paused it.' : u.state === 'stopped' ? 'You stopped it.' : u.state === 'failed' ? u.why
+      : `It stopped during "${STAGES[u.stage] || 'the first stage'}": the app was closed or the computer restarted.`;
+    return `<div class="box live" style="margin:0 0 16px"><h4>${M.esc(u.name)} did not finish</h4><div>${M.esc(why)}</div>
+      <div class="kept">${kept || '<span class="muted">Nothing was saved yet.</span>'}</div>
+      ${u.source_missing ? '<div class="finding bad">The recording is no longer where it was, so this cannot be resumed.</div>' : ''}
+      <div class="row"><button class="primary" data-resume="${n}" ${u.source_missing ? 'disabled' : ''}>Resume</button><button data-fresh="${n}" ${u.source_missing ? 'disabled' : ''}>Start over</button>
+      <button class="ghost" data-discard="${n}">Discard</button><span class="muted small" style="margin-left:auto">${u.left_s ? 'about ' + dur(u.left_s) + ' left' : ''}</span></div></div>`;
+  }).join('');
+  $('#unfinished').onclick = async (e) => {
+    const d = e.target.dataset, u = st.unfinished[d.resume ?? d.fresh ?? d.discard]; if (!u) return;
+    if (d.discard != null) {
+      if (!confirm('Discard the saved pieces of this job? They go to the Recycle Bin. The recording itself is not touched.')) return;
+      await api('discard', { body: { key: u.key } }); M.log('action.discard'); return refresh();
+    }
+    e.target.disabled = true;
+    start({ ...u.item, fresh: d.fresh != null }); M.log(d.fresh != null ? 'action.start_over' : 'action.resume');
+  };
+}
+async function start(body) {
+  const { id } = await api('job/run', { body });
+  if (!following) return follow(id);
+  // something is already running: this one joins the line, which its own short job reports
+  for (let i = 0; i < 20; i++) { await new Promise((r) => setTimeout(r, 400)); const j = await M.api('/api/jobs/' + id); if (j.status !== 'running' && j.status !== 'starting') break; }
+  refresh();
+}
+
+// Once a memo is written: which voice is whose. The models only know "Speaker 1" and "Speaker 2".
+async function askNames(memo) {
+  const list = (await api('speakers?path=' + encodeURIComponent(memo))).filter((s) => /^Speaker \d+$/.test(s.speaker));
+  const box = $('#who'); if (!box) return;
+  if (!list.length) { if (box.innerHTML) box.innerHTML = '<div class="finding ok">Names are in the memo.</div>'; return; }
+  box.innerHTML = `<div class="names"><b>Who is who?</b><span class="muted small"> Put a name to each voice and the memo is rewritten with names.${list.length > 2 ? ' On a long call one person can come back under a new number: give both voices the same name and they become one.' : ''}</span>
+    ${list.map((s, i) => `<div class="name"><label for="spk${i}">${M.esc(s.speaker)} <span class="muted">${s.lines} line${s.lines > 1 ? 's' : ''}</span></label>
+      <input id="spk${i}" data-speaker="${M.esc(s.speaker)}" placeholder="Name" autocomplete="off"><q>${M.esc(s.sample)}</q></div>`).join('')}
+    <div class="row" style="margin-top:10px"><button id="setnames">Use these names</button><span class="muted small" id="named"></span></div></div>`;
+  const given = $('#att').value.split(',').map((a) => a.trim()).filter(Boolean);
+  $('#setnames').onclick = async () => {
+    const names = {}; box.querySelectorAll('input').forEach((i) => { if (i.value.trim()) names[i.dataset.speaker] = i.value.trim(); });
+    if (!Object.keys(names).length) return ($('#named').textContent = 'Type at least one name.');
+    try {
+      const r = await api('speakers', { body: { path: memo, names } });
+      $('#named').textContent = r.changed ? `Done: ${r.changed} places updated.` : 'Nothing to change.';
+      M.log('action.speakers_named', { speakers: Object.keys(names).length });
+      if (r.changed) { loadMeetings(); await askNames(memo); }
+    } catch (e) { $('#named').textContent = e.message; }
+  };
+  if (given.length === list.length) box.querySelectorAll('input').forEach((i, n) => { i.placeholder = given[n] + '?'; });
+}
+
+$('#run').onclick = async () => {
+  $('#run').disabled = true;
+  const speed = document.querySelector('input[name=speed]:checked').value;
+  M.log('action.process', { ext: path.split('.').pop().toLowerCase(), speed, queued: !!following });
+  try { await start({ path, name: pickedName, title: $('#title').value, attendees: $('#att').value, speed }); }
+  catch (e) { $('#job').innerHTML = `<div class="finding bad">${M.esc(e.message)}</div>`; }
+  $('#run').disabled = false;
+  ($('#job').firstElementChild || $('#lineBox')).scrollIntoView({ behavior: 'smooth', block: 'nearest' });   // what was just started is in view
+};
+M.ready.then(async () => {
+  const st = await api('status');
+  $('#where').textContent = 'Saves to ' + st.output.split(/[\\/]/).slice(-3).join(' › '); $('#where').title = st.output;
+  $('#needs').innerHTML = st.needs.map((n) => `<div class="need"><b>${M.esc(n.capability.replace('-', ' '))}</b><span class="chip ${n.ready ? 'ok' : 'warn'}">${n.ready ? 'ready' : 'not ready'}</span><span>${M.esc(n.ready ? `${n.model}, ${n.est_mb} MB while it runs` : n.hint)}</span></div>`).join('');
+  const notReady = st.needs.filter((n) => !n.ready).length;
+  $('#runsum').textContent = `What will run: ${st.needs.length} models, one at a time` + (notReady ? ` · ${notReady} not ready` : ' · all ready');
+  if (notReady) $('#runsum').closest('details').open = true;   // a stage that will be skipped is worth seeing before starting
+  const pick = async (p, shown) => {
+    path = p; const name = pickedName = shown || p.split(/[\\/]/).pop();
+    $('#picked').textContent = name; $('#picked').classList.add('has'); $('#run').disabled = false; $('#speed').hidden = true;
+    try { est = await api('estimate?path=' + encodeURIComponent(p)); } catch { est = null; }
+    if (path !== p || !est || !est.audio) return;
+    $('#speed').hidden = false;
+    if (est.seconds) $('#picked').textContent = `${name} · ${dur(est.seconds)}`;
+    const line = (e) => e ? `${e.model}${est.seconds ? ` · about ${dur(e.seconds)} for this recording` : ''}` : '';
+    $('#spA').textContent = line(est.accurate); $('#spF').textContent = line(est.fast) + (est.fast ? ' · less exact on mixed languages' : '');
+    const fastRow = document.querySelector('input[value=fast]').closest('label');
+    fastRow.hidden = !!est.same_model; if (est.same_model) document.querySelector('input[value=accurate]').checked = true;
+    $('#spNote').textContent = !est.seconds ? '' : (est.accurate.measured ? 'Times come from earlier runs on this device.' : 'Times are estimates until this device has finished a recording.')
+      + (est.seconds > 600 ? ` ${est.accurate.windows} windows, ${est.accurate.pieces} pieces, about ${est.accurate.sections} sections.` : '');
+  };
+  const exts = [...st.audio_exts, '.txt', '.md', '.vtt', '.srt', '.docx', '.rtf', '.odt', '.pdf', '.html'];
+  M.accept = { exts, open: pick };   // a recording or transcript dropped anywhere in this window
+  const first = M.param('path'), dropped = M.param('name');   // `mitra-marketplace open twinmind <file>` arrives here
+  const fb = await M.browser($('#files'), { exts, onPick: (p) => pick(p), start: first && !dropped ? first.replace(/[\\/][^\\/]*$/, '') : null });
+  if (first) { if (!dropped) fb.select(first); pick(first, dropped); }
+  await loadMeetings(true); refresh();
+  const want = location.hash.slice(1); showTab(first ? 'new' : ['lib', 'new', 'across', 'people'].includes(want) ? want : 'lib');
+});
+</script>
+</body>
+</html>

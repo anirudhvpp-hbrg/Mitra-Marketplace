@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitra Architecture</title>
+<style>
+:root {
+  --navy-950: #030f24; --navy-900: #06193a; --navy-800: #052b57; --navy-700: #0d3a72; --navy-600: #1d4f8f;
+  --saffron-600: #d9520f; --saffron-500: #f26b21; --amber-400: #f9a11b; --amber-200: #fcd89a;
+  --sky-500: #1b9ad6; --sky-200: #b9e2f5; --green: #1f7a4d; --red: #b42318;
+  --bg: #fbf9f5; --panel: #ffffff; --sunken: #f4f0e8; --ink: #06193a; --muted: #5a6480; --line: #e9e3d7; --line-2: #d9d2c3;
+  --node: #ffffff; --node-ink: #06193a; --edge: #c9c1b1; --live: var(--saffron-500); --live-soft: rgba(242,107,33,.14);
+  --ok: #1f7a4d; --bad: #b42318; --warn: #96650a; --link: #0d3a72;
+  --glow-a: rgba(242,107,33,.14); --glow-b: rgba(27,154,214,.12);
+  --logo: url(../web/static/brand/mitra-color.png);
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mono: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace;
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --shadow: 0 2px 6px rgba(5,43,87,.08), 0 18px 44px rgba(5,43,87,.12);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #030f24; --panel: #0a1d40; --sunken: #0f2750; --ink: #eef2f9; --muted: #9fadc8; --line: #17305c; --line-2: #26467c;
+  --node: #0c2248; --node-ink: #eef2f9; --edge: #2a4a80; --live-soft: rgba(242,107,33,.22);
+  --ok: #5fd09a; --bad: #ff8a80; --warn: #f5c25b; --link: #8fd0f2;
+  --glow-a: rgba(242,107,33,.2); --glow-b: rgba(27,154,214,.18);
+  --logo: url(../web/static/brand/mitra-tint.png); --shadow: 0 14px 40px rgba(0,0,0,.5); color-scheme: dark;
+} }
+:root[data-theme="dark"] {
+  --bg: #030f24; --panel: #0a1d40; --sunken: #0f2750; --ink: #eef2f9; --muted: #9fadc8; --line: #17305c; --line-2: #26467c;
+  --node: #0c2248; --node-ink: #eef2f9; --edge: #2a4a80; --live-soft: rgba(242,107,33,.22);
+  --ok: #5fd09a; --bad: #ff8a80; --warn: #f5c25b; --link: #8fd0f2;
+  --glow-a: rgba(242,107,33,.2); --glow-b: rgba(27,154,214,.18);
+  --logo: url(../web/static/brand/mitra-tint.png); --shadow: 0 14px 40px rgba(0,0,0,.5); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/24px var(--sans); -webkit-font-smoothing: antialiased; }
+a { color: var(--link); }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; margin: 0; letter-spacing: -.02em; }
+h1 { font-size: clamp(34px, 6vw, 60px); line-height: 1.08; letter-spacing: -.035em; }
+h2 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.15; }
+h3 { font-size: 20px; line-height: 28px; }
+p { margin: 0; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 16px; }
+.muted { color: var(--muted); } .small { font-size: 14px; line-height: 20px; }
+.eyebrow { font: 600 12px/16px var(--sans); letter-spacing: .12em; text-transform: uppercase; color: var(--live); }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--amber-400); outline-offset: 2px; border-radius: 6px; }
+
+/* top bar */
+.bar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 86%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.bar .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+.logo { width: 34px; height: 34px; background: var(--logo) center / contain no-repeat; flex: none; }
+.bar b { font-family: var(--serif); font-size: 18px; }
+.bar nav { display: flex; gap: 4px; margin-left: auto; overflow-x: auto; scrollbar-width: none; }
+.bar nav a { padding: 8px 12px; border-radius: 999px; text-decoration: none; color: var(--muted); font-size: 14px; white-space: nowrap; }
+.bar nav a:hover, .bar nav a.on { color: var(--ink); background: var(--sunken); }
+.theme { border: 1px solid var(--line-2); background: var(--panel); border-radius: 999px; padding: 6px 12px; font-size: 13px; min-height: 36px; flex: none; }
+
+/* hero */
+.hero { position: relative; overflow: hidden; padding: 64px 0 40px; }
+.hero::before { content: ""; position: absolute; inset: -20% -10% auto -10%; height: 520px; pointer-events: none;
+  background: radial-gradient(520px 320px at 18% 30%, var(--glow-a), transparent 70%), radial-gradient(560px 340px at 82% 20%, var(--glow-b), transparent 70%); }
+.hero .wrap { position: relative; }
+.hero p.lead { font-size: clamp(17px, 2vw, 20px); line-height: 1.55; color: var(--muted); max-width: 720px; margin-top: 16px; }
+.term { display: inline-flex; align-items: center; gap: 10px; margin-top: 24px; padding: 10px 16px; border-radius: 12px; background: var(--navy-950); color: #eef2f9; font: 15px/22px var(--mono); border: 1px solid #26467c; }
+.term i { color: var(--amber-400); font-style: normal; } .term .cur { width: 8px; height: 18px; background: var(--amber-400); animation: blink 1.1s steps(2) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 32px; }
+.stat { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+.stat b { display: block; font: 600 30px/36px var(--serif); letter-spacing: -.02em; } .stat span { color: var(--muted); font-size: 14px; line-height: 20px; }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+section { padding: 48px 0; border-top: 1px solid var(--line); scroll-margin-top: 56px; }
+section > .wrap > .intro { max-width: 760px; margin-bottom: 24px; } .intro p { color: var(--muted); margin-top: 8px; }
+
+/* flow */
+.flows { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.chip { border: 1px solid var(--line-2); background: var(--panel); border-radius: 999px; padding: 8px 14px; font-size: 14px; line-height: 20px; min-height: 40px; transition: .18s var(--ease); }
+.chip:hover { border-color: var(--live); } .chip[aria-pressed="true"] { background: var(--live); border-color: var(--live); color: #030f24; font-weight: 600; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+@media (max-width: 1180px) { .stage { grid-template-columns: 1fr; } }
+.canvas { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 8px; box-shadow: var(--shadow); overflow-x: auto; }
+.canvas svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.n rect { fill: var(--node); stroke: var(--line-2); stroke-width: 1.5; transition: .25s var(--ease); }
+.n text { fill: var(--node-ink); font: 600 15px var(--sans); pointer-events: none; } .n text.sub { fill: var(--muted); font: 400 12px var(--sans); }
+.n { cursor: pointer; } .n:hover rect { stroke: var(--sky-500); }
+.n.sel rect { stroke: var(--sky-500); stroke-width: 2.5; }
+.n.live rect { stroke: var(--live); stroke-width: 2.5; fill: var(--live-soft); }
+.n.dim { opacity: .5; } .e.dim { opacity: .3; }
+.n.kind-model rect { stroke-dasharray: 5 4; }
+.e { fill: none; stroke: var(--edge); stroke-width: 1.6; transition: .25s var(--ease); }
+.e.live { stroke: var(--live); stroke-width: 2.6; stroke-dasharray: 7 6; animation: dash 0.9s linear infinite; }
+@keyframes dash { to { stroke-dashoffset: -26; } }
+.band { fill: var(--muted); font: 600 11px var(--sans); letter-spacing: .12em; }
+.side { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 20px; min-height: 300px; position: sticky; top: 72px; }
+@media (max-width: 1180px) { .side { position: static; min-height: 0; } }
+.side h3 { margin-bottom: 4px; } .side .tag { display: inline-block; font-size: 12px; line-height: 16px; padding: 3px 9px; border-radius: 999px; background: var(--sunken); color: var(--muted); margin: 0 6px 8px 0; }
+.side ul { margin: 12px 0 0; padding-left: 18px; } .side li { margin: 6px 0; font-size: 14.5px; line-height: 21px; }
+.steps { list-style: none; margin: 14px 0 0; padding: 0; counter-reset: s; }
+.steps li { counter-increment: s; position: relative; padding: 8px 0 8px 36px; font-size: 14.5px; line-height: 21px; color: var(--muted); border-left: 2px solid var(--line); margin-left: 12px; transition: .2s; }
+.steps li::before { content: counter(s); position: absolute; left: -13px; top: 7px; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font: 600 12px var(--sans); background: var(--sunken); color: var(--muted); }
+.steps li.on { color: var(--ink); } .steps li.on::before { background: var(--live); color: #030f24; } .steps li.done::before { background: var(--ok); color: #fff; content: "✓"; }
+.ctrl { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line-2); background: var(--panel); border-radius: 10px; padding: 8px 14px; font-size: 14px; min-height: 40px; }
+.btn.primary { background: var(--live); border-color: var(--live); color: #030f24; font-weight: 600; }
+
+/* memory */
+.mem { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 900px) { .mem { grid-template-columns: 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 20px; }
+.meter { margin-top: 14px; display: grid; gap: 12px; }
+.row { display: grid; grid-template-columns: 150px 1fr 76px; gap: 10px; align-items: center; font-size: 14px; line-height: 20px; }
+@media (max-width: 520px) { .row { grid-template-columns: 1fr 64px; } .row .track { grid-column: 1 / -1; order: 3; } }
+.track { position: relative; height: 16px; border-radius: 8px; background: var(--sunken); overflow: visible; }
+.fill { position: absolute; inset: 0 auto 0 0; width: 0; border-radius: 8px; background: linear-gradient(90deg, var(--sky-500), var(--navy-600)); transition: width 1.1s var(--ease); }
+.fill.hot { background: linear-gradient(90deg, var(--amber-400), var(--saffron-500)); }
+.cap { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink); opacity: .55; }
+.ceil { position: absolute; top: -6px; bottom: -6px; right: 0; width: 2px; background: var(--bad); }
+.row b { text-align: right; font-variant-numeric: tabular-nums; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 3px; vertical-align: middle; margin-right: 6px; background: var(--ink); opacity: .55; } .legend i.c { background: var(--bad); opacity: 1; }
+.tl svg { width: 100%; height: auto; display: block; margin-top: 10px; }
+.tl .ax { stroke: var(--line-2); } .tl text { fill: var(--muted); font: 11px var(--sans); }
+.tl .seg { transition: opacity .2s; cursor: pointer; } .tl .seg:hover, .tl .seg:focus { opacity: .75; }
+.tl .tip { margin-top: 10px; min-height: 44px; font-size: 14px; line-height: 20px; }
+
+/* apps */
+.apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; } @media (max-width: 960px) { .apps { grid-template-columns: repeat(2, 1fr); } } @media (max-width: 600px) { .apps { grid-template-columns: 1fr; } }
+.app { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 20px; transition: transform .2s var(--ease), border-color .2s, box-shadow .2s; display: block; width: 100%; }
+.app:hover { transform: translateY(-3px); border-color: var(--line-2); box-shadow: var(--shadow); }
+.app[aria-expanded="true"] { border-color: var(--live); }
+.glyph { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: linear-gradient(140deg, var(--amber-200), #fff 75%); color: var(--navy-800); margin-bottom: 14px; }
+:root[data-theme="dark"] .glyph { background: linear-gradient(140deg, #15356b, #0a1d40); color: var(--amber-200); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .glyph { background: linear-gradient(140deg, #15356b, #0a1d40); color: var(--amber-200); } }
+.glyph svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.app p { color: var(--muted); font-size: 14.5px; line-height: 21px; margin-top: 6px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; } .pill { font-size: 12px; line-height: 16px; padding: 3px 9px; border-radius: 999px; background: var(--sunken); color: var(--muted); }
+.pill.m { background: var(--live-soft); color: var(--ink); }
+.detail { grid-column: 1 / -1; background: var(--panel); border: 1px solid var(--live); border-radius: 22px; padding: 24px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 24px; animation: rise .3s var(--ease); }
+@media (max-width: 860px) { .detail { grid-template-columns: 1fr; } }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.detail h4 { margin: 0 0 8px; font: 600 13px/18px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.detail ul { margin: 0 0 16px; padding-left: 18px; } .detail li { margin: 5px 0; font-size: 15px; line-height: 22px; }
+.mock { border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; background: var(--bg); font-size: 12px; line-height: 16px; }
+.mock .top { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.mock .top .logo { width: 18px; height: 18px; } .mock .body { padding: 12px; display: grid; gap: 8px; min-height: 180px; }
+.mock .ln { height: 8px; border-radius: 4px; background: var(--sunken); } .mock .ln.h { height: 12px; width: 55%; background: var(--line-2); } .mock .ln.s { width: 70%; } .mock .ln.a { background: var(--live-soft); width: 40%; }
+.mock .cols { display: grid; grid-template-columns: 90px 1fr; gap: 10px; } .mock .cols > div { display: grid; gap: 7px; align-content: start; }
+
+/* pipeline */
+.pipe { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; } @media (max-width: 900px) { .pipe { grid-template-columns: repeat(3, 1fr); } } @media (max-width: 520px) { .pipe { grid-template-columns: repeat(2, 1fr); } }
+.pstep { text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: 14px; padding: 14px; min-height: 96px; position: relative; transition: .2s var(--ease); }
+.pstep .num { font: 600 12px var(--sans); color: var(--muted); } .pstep b { display: block; margin-top: 4px; font-size: 15px; line-height: 20px; } .pstep span { font-size: 12.5px; line-height: 17px; color: var(--muted); display: block; margin-top: 4px; }
+.pstep[aria-selected="true"] { border-color: var(--live); background: var(--live-soft); }
+.pout { margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; } @media (max-width: 860px) { .pout { grid-template-columns: 1fr; } }
+.sample { background: var(--sunken); border-radius: 14px; padding: 16px; font: 13.5px/21px var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.sample mark { background: var(--live-soft); color: inherit; border-radius: 3px; padding: 0 2px; } .sample s { color: var(--bad); }
+.kv { display: grid; grid-template-columns: 120px 1fr; gap: 6px 12px; font-size: 14.5px; line-height: 21px; } .kv dt { color: var(--muted); } .kv dd { margin: 0; }
+
+/* models */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; line-height: 21px; }
+th { text-align: left; font: 600 12px/16px var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--line-2); white-space: nowrap; }
+td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: top; } td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 22px; }
+.v { display: inline-block; font-size: 12px; line-height: 16px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.v.use { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); } .v.best { background: var(--live); color: #030f24; }
+.v.no { background: color-mix(in srgb, var(--bad) 16%, transparent); color: var(--bad); } .v.maybe { background: var(--sunken); color: var(--muted); }
+.combo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-top: 20px; } @media (max-width: 800px) { .combo { grid-template-columns: 1fr; } }
+.combo .card h3 { font-size: 18px; } .chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0; font-size: 13px; }
+.chain span { padding: 4px 10px; border-radius: 8px; background: var(--sunken); } .chain i { color: var(--live); font-style: normal; font-weight: 700; }
+
+/* rules */
+.rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; } @media (max-width: 900px) { .rules { grid-template-columns: repeat(2, 1fr); } } @media (max-width: 560px) { .rules { grid-template-columns: 1fr; } }
+.rule { border-left: 3px solid var(--live); padding: 4px 0 4px 14px; } .rule b { display: block; } .rule span { color: var(--muted); font-size: 14.5px; line-height: 21px; }
+footer { padding: 32px 0 56px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<header class="bar"><div class="wrap">
+  <span class="logo" role="img" aria-label="Mitra"></span><b>Mitra</b>
+  <nav aria-label="Sections"><a href="#flow">Architecture</a><a href="#memory">Memory</a><a href="#apps">Apps</a><a href="#pipeline">TwinMind</a><a href="#models">Models</a><a href="#rules">Rules</a></nav>
+  <button class="theme" id="theme" aria-label="Switch between light and dark">Light / dark</button>
+</div></header>
+
+<div class="hero"><div class="wrap">
+  <div class="eyebrow">Version 0.8.0 · 13 November 2026</div>
+  <h1>Local apps that leave nothing behind in memory.</h1>
+  <p class="lead">One command opens a set of small programs on your own device. Each starts when you click it and is gone seconds after you close it. Models load for one request, one at a time, under a 1 GB ceiling.</p>
+  <div class="term"><i>&gt;</i> mitra-marketplace <span class="cur"></span></div>
+  <div class="stats">
+    <div class="stat"><b data-count="0" data-suffix=" MB">0 MB</b><span>in memory when nothing is open</span></div>
+    <div class="stat"><b data-count="12" data-suffix=" MB">12 MB</b><span>per open app</span></div>
+    <div class="stat"><b data-count="1024" data-suffix=" MB">1024 MB</b><span>ceiling for any model, one at a time</span></div>
+    <div class="stat"><b data-count="343" data-suffix="">343</b><span>test cases, all passing on 13 Nov</span></div>
+  </div>
+</div></div>
+
+<section id="flow"><div class="wrap">
+  <div class="intro"><div class="eyebrow">Architecture</div><h2>Follow a request through the system</h2>
+  <p>Pick something you might do. The path lights up step by step. Click any box to see what it is and what it costs.</p></div>
+  <div class="flows" id="flows" role="group" aria-label="Flows"></div>
+  <div class="stage">
+    <div class="canvas"><svg id="map" viewBox="0 0 1100 660" role="img" aria-label="Architecture diagram: launcher, app processes, workers, governor, model runtimes"></svg></div>
+    <aside class="side" id="side" aria-live="polite"></aside>
+  </div>
+</div></section>
+
+<section id="memory"><div class="wrap">
+  <div class="intro"><div class="eyebrow">Memory</div><h2>One model at a time, each on its own leash</h2>
+  <p>The governor starts every model. Each is held to what it was measured to need plus about 10%, never to the ceiling, and is stopped if it goes over.</p></div>
+  <div class="mem">
+    <div class="card"><h3>Peak memory against the ceiling</h3><p class="muted small">Measured on real phone calls, CPU only.</p>
+      <div class="meter" id="meter"></div>
+      <div class="legend"><span><i></i>that model's own cap</span><span><i class="c"></i>1,024 MB ceiling</span></div></div>
+    <div class="card tl"><h3>A 16-minute call, second by second</h3><p class="muted small">Memory held by models while TwinMind works. Hover or tab through the blocks.</p>
+      <div id="timeline"></div><div class="tip" id="tip"></div></div>
+  </div>
+</div></section>
+
+<section id="apps"><div class="wrap">
+  <div class="intro"><div class="eyebrow">Product</div><h2>Six ways in, each its own program</h2>
+  <p>Click a card for what it does, what it opens, and what it cannot do yet.</p></div>
+  <div class="apps" id="applist"></div>
+</div></section>
+
+<section id="pipeline"><div class="wrap">
+  <div class="intro"><div class="eyebrow">TwinMind</div><h2>From a recording to a memo you can check</h2>
+  <p>Six stages. Three use a model, one after another. Click a stage to see what goes in, what comes out, and what it costs.</p></div>
+  <div class="pipe" id="pipe" role="tablist" aria-label="Pipeline stages"></div>
+  <div class="pout"><div class="card" id="pinfo"></div><div class="sample" id="psample" aria-live="polite"></div></div>
+</div></section>
+
+<section id="models"><div class="wrap">
+  <div class="intro"><div class="eyebrow">Models</div><h2>What runs, what was tried, what could be added</h2>
+  <p>Your library holds 157 models. One is usable only if it runs on CPU in a runtime already in the package and peaks under 1,024 MB. These were measured on a real call or checked for feasibility on 13 November.</p></div>
+  <div class="filters" id="filters" role="group" aria-label="Filter models"></div>
+  <div class="tablewrap"><table><thead><tr><th>Model</th><th>For</th><th>Peak RAM</th><th>What happened</th><th>Verdict</th></tr></thead><tbody id="mrows"></tbody></table></div>
+  <h3 style="margin-top:32px">Combinations worth building</h3>
+  <div class="combo" id="combos"></div>
+</div></section>
+
+<section id="rules"><div class="wrap">
+  <div class="intro"><div class="eyebrow">Rules</div><h2>What the system always keeps</h2></div>
+  <div class="rules" id="rulelist"></div>
+</div></section>
+
+<footer><div class="wrap">Mitra 0.8.0. The written version of this page, with every feature and limit, is <a href="ARCHITECTURE.md">ARCHITECTURE.md</a>. Numbers are from the development machine (Windows 11, CPU only).</div></footer>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---- theme ---------------------------------------------------------------------------------
+$('#theme').onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('mitra-doc-theme', document.documentElement.dataset.theme); } catch (e) {}
+};
+try { const t = localStorage.getItem('mitra-doc-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+
+// ---- counters ------------------------------------------------------------------------------
+$$('[data-count]').forEach((el) => {
+  const to = +el.dataset.count, suf = el.dataset.suffix || '';
+  if (still || !to) return;
+  const t0 = performance.now();
+  const tick = (t) => { const k = Math.min(1, (t - t0) / 900); el.textContent = Math.round(to * (1 - Math.pow(1 - k, 3))) + suf; if (k < 1) requestAnimationFrame(tick); };
+  requestAnimationFrame(tick);
+});
+
+// ---- architecture map ----------------------------------------------------------------------
+const N = {
+  you:      { x: 110, y: 28,  w: 240, h: 56, t: 'You, in a terminal', s: 'mitra-marketplace', kind: 'Person',
+              d: 'Typing the command starts the launcher and opens the welcome screen. The same command has sub-commands: open, apps, stop, status, models, test, push, update.', f: ['Works from any terminal: bin is on the PATH', 'mitra-marketplace open twinmind call.m4a starts one app on one file'] },
+  explorer: { x: 750, y: 28,  w: 240, h: 56, t: 'Windows Explorer', s: 'double-click · Open with', kind: 'Person',
+              d: 'After mitra-marketplace register, each app is offered for its file types under "Open with" and in Default apps, and has a Start menu entry.', f: ['Writes only to your own user settings', 'Never sets a default itself; Windows lets only you do that', 'mitra-marketplace unregister undoes it'] },
+  opener:   { x: 790, y: 128, w: 160, h: 50, t: 'mitra-open', s: 'Rust · 316 KB · no window', kind: 'Rust',
+              d: 'A tiny windowless program Windows runs when you open a file. It starts the right app on that file without a console window flashing.', f: ['One copy per app in ~/.mitra/handlers', 'Exits as soon as the app has started'] },
+  launcher: { x: 390, y: 120, w: 320, h: 66, t: 'Launcher', s: 'Go · port 7421 · about 12 MB', kind: 'Go',
+              d: 'The welcome screen, the icon grid, and the Create, Memory and System pages. It has no abilities of its own: it cannot convert a file or ask a model. It starts apps and shows state.', f: ['Answers 409 to convert, ask, upload and any app’s routes', 'A file dropped on it goes to the app that opens that type', 'Exits when its window closes and nothing is open'] },
+  pdf:      { x: 30,  y: 250, w: 190, h: 62, t: 'Mitra PDF', s: 'own process · no model', kind: 'App' },
+  md:       { x: 240, y: 250, w: 190, h: 62, t: 'Markdown Reader', s: 'own process · no model', kind: 'App' },
+  tomd:     { x: 450, y: 250, w: 190, h: 62, t: 'Anything to MD', s: 'own process · no model', kind: 'App' },
+  twin:     { x: 660, y: 250, w: 190, h: 62, t: 'TwinMind', s: 'own process · 3 models in turn', kind: 'App' },
+  ask:      { x: 870, y: 250, w: 190, h: 62, t: 'Ask Mitra', s: 'own process · 1 model', kind: 'App' },
+  log:      { x: 30,  y: 388, w: 230, h: 62, t: 'Memory log', s: '~/.mitra/memory · every event', kind: 'Store',
+              d: 'One line per event from every process: app starts and exits, files opened, actions, each request with its memory, each model run with its peak and cap, every refusal and stop.', f: ['Weekly, biweekly and monthly reports', 'Prune rolls up and archives old days', 'Never leaves the device'] },
+  worker:   { x: 330, y: 384, w: 440, h: 70, t: 'Workers', s: 'Python · one process per request · 28 to 38 MB · gone when it answers', kind: 'Python',
+              d: 'All the logic: conversion, the meeting pipeline, grounding, memory reports, the app builder. A fresh process for each request that exits when it returns, so nothing accumulates.', f: ['convert.py keeps a document’s own structure', 'models.py picks a model and starts it under the governor', 'grounding.py checks every note against the transcript', 'Standard library only, so it installs on Termux'] },
+  catalog:  { x: 840, y: 388, w: 230, h: 62, t: 'Catalog and models', s: 'catalog.json · models/', kind: 'Store',
+              d: 'Apps ask for capabilities, never model names. The catalog lists candidates for each, best first, with measured memory. The first one on this device that fits the ceiling is used.', f: ['assistant · meeting-notes · transcription · diarization', 'Models are copied into the package, so it runs with the library unplugged', '1,820 MB of models in the package'] },
+  gov:      { x: 330, y: 492, w: 440, h: 66, t: 'Governor', s: 'Rust · lock · budget · stop', kind: 'Rust',
+              d: 'Every model process is started here. One model at a time across all apps. Each is held to its own measured need plus about 10% and sampled twice a second.', f: ['Refuses a model that would not fit, before it starts', 'Stops a model that goes over its cap', 'A stopped audio model gets one more run, held to the ceiling', 'Runs models below normal priority'] },
+  llama:    { x: 150, y: 590, w: 250, h: 54, t: 'llama-server', s: 'Qwen3 0.6B 564 MB · Gemma 3 1B 945 MB', kind: 'Model',
+              d: 'Language models. Qwen3 0.6B answers general questions in Ask Mitra. Gemma 3 1B writes meeting notes, with Qwen as fallback if memory is refused.', f: ['CPU only, 1,536-token context, 8-bit context cache', 'Weight repacking off: saved 200 MB on Qwen'] },
+  whisper:  { x: 425, y: 590, w: 250, h: 54, t: 'whisper.cpp', s: 'Whisper medium · 964 to 980 MB', kind: 'Model',
+              d: 'Speech to text. Hears a recording in 5-minute pieces cut in pauses, with word timings. Whatever is spoken comes out in English.', f: ['99 languages; follows Hindi and English mixed', 'Greedy decoding keeps it under the ceiling', 'About 25 seconds per minute of audio', 'Whisper small (637 MB) takes over if memory is refused'] },
+  audio:    { x: 700, y: 590, w: 250, h: 54, t: 'audio.cpp', s: 'Sortformer · 170 to 187 MB', kind: 'Model',
+              d: 'Who speaks when. Heard in overlapping 5-minute windows; a voice keeps its number across windows by who was talking in the overlap.', f: ['Up to eight speakers', 'About 12 seconds per minute of audio', 'Reserves 3.2 GB of virtual memory at start, uses about 180 MB'] },
+};
+const APPINFO = {
+  pdf:  { d: 'Reads PDFs. Page view is the browser’s own viewer; text view is the document as structured text.', f: ['Opens .pdf', 'Send to Anything to MD', 'Not built: search, outline, read aloud, scanned pages'] },
+  md:   { d: 'Renders Markdown with an outline, a source toggle and links between files.', f: ['Opens .md .markdown .txt', 'TwinMind’s search opens a memo at the matching line'] },
+  tomd: { d: 'Turns a document into Markdown and keeps its own headings, lists, tables, emphasis and links.', f: ['Word, PowerPoint, Excel, HTML, EPUB, RTF, ODT, CSV, notebooks, code', 'Preview, then save beside the source', 'Not handled: tables inside PDFs, scans'] },
+  twin: { d: 'A recording or transcript in, a memo out: gist, discussion points, action items, quoted commitments and the transcript with speakers.', f: ['Three models, one after another', 'A 16-minute call takes about 12 minutes', 'Asks who is who, then rewrites the memo with names', 'Search across every meeting'] },
+  ask:  { d: 'The one general question-and-answer model.', f: ['Qwen3 0.6B, 564 MB while it answers', 'Keeps the thread of a conversation', 'Model is unloaded after every answer'] },
+};
+Object.entries(APPINFO).forEach(([k, v]) => Object.assign(N[k], v));
+const E = [['you', 'launcher'], ['explorer', 'opener'], ['opener', 'launcher'], ['launcher', 'pdf'], ['launcher', 'md'], ['launcher', 'tomd'], ['launcher', 'twin'], ['launcher', 'ask'],
+  ['pdf', 'worker'], ['md', 'worker'], ['tomd', 'worker'], ['twin', 'worker'], ['ask', 'worker'], ['worker', 'log'], ['worker', 'catalog'], ['worker', 'gov'], ['gov', 'llama'], ['gov', 'whisper'], ['gov', 'audio'], ['twin', 'md']];
+const FLOWS = [
+  { id: 'open', name: 'Click an icon', steps: [
+    [['you', 'launcher'], 'You type the command. The launcher starts and shows the welcome screen, then your apps as icons.'],
+    [['launcher', 'tomd'], 'You click Anything to MD. The launcher starts that app’s own process on a free port (about 110 ms) and opens it as a bare window.'],
+    [['tomd', 'worker', 'log'], 'The window opens. Its start and how it was opened are written to the memory log.'],
+    [['tomd'], 'You close the window. Five seconds later the process ends. Nothing of it remains in memory.']] },
+  { id: 'file', name: 'Open a file from Explorer', steps: [
+    [['explorer'], 'You double-click a PDF, or right-click and choose Open with.'],
+    [['explorer', 'opener'], 'Windows runs the small windowless handler registered for that type.'],
+    [['opener', 'launcher', 'pdf'], 'The handler starts Mitra PDF on that file. No console window appears.'],
+    [['pdf', 'worker', 'log'], 'The app shows the pages. The file open is logged, so it appears under recent files next time.']] },
+  { id: 'convert', name: 'Convert a document', steps: [
+    [['tomd'], 'You drop a Word file on Anything to MD.'],
+    [['tomd', 'worker'], 'The app asks for a conversion. One Python process starts, about 30 MB.'],
+    [['worker'], 'It reads styles, numbering and tables, and writes Markdown that keeps the heading levels, lists, emphasis and links.'],
+    [['worker', 'log', 'tomd'], 'The answer comes back in under a second. The worker exits. No model was involved.']] },
+  { id: 'ask', name: 'Ask a question', steps: [
+    [['ask', 'worker'], 'You ask Ask Mitra something. A worker starts.'],
+    [['worker', 'catalog'], 'It asks for the "assistant" capability. The catalog gives the first candidate that fits: Qwen3 0.6B.'],
+    [['worker', 'gov'], 'The governor takes the lock, checks free memory, and starts the model with a cap of 670 MB.'],
+    [['gov', 'llama'], 'The model loads and answers, peaking at 564 MB.'],
+    [['llama', 'gov', 'worker', 'log', 'ask'], 'The model is stopped and the lock released. Peak, cap and seconds are logged. The RAM pill returns to "no model loaded".']] },
+  { id: 'meet', name: 'Process a meeting', steps: [
+    [['twin', 'worker'], 'You pick a recording in TwinMind and press Write the memo. A detached job starts and reports each stage.'],
+    [['worker', 'gov', 'audio'], 'Who speaks when: the speaker model hears 5-minute windows that overlap, about 180 MB.'],
+    [['worker', 'gov', 'whisper'], 'What was said: the speech model hears 5-minute pieces, about 975 MB. Sentences are given to speakers.'],
+    [['worker'], 'The gist: plain code quotes two or three sentences word for word. No model.'],
+    [['worker', 'gov', 'llama'], 'Notes: Gemma 3 1B reads each section and writes points, decisions and action items, about 940 MB.'],
+    [['worker', 'log'], 'The check: anything the transcript does not support is removed. The memo is written to your Dropbox folder.'],
+    [['twin', 'md'], 'You name the speakers, then open the memo. Markdown Reader starts as its own app.']] },
+];
+const svg = $('#map'), NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs = {}, text) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+[['YOU', 20], ['LAUNCHER', 112], ['APPS, ONE PROCESS EACH', 240], ['WORK PER REQUEST', 374], ['MEMORY CONTROL', 482], ['MODEL RUNTIMES', 580]].forEach(([t, y]) => svg.append(el('text', { x: 14, y, class: 'band' }, t)));
+E.forEach(([a, b]) => {
+  const A = N[a], B = N[b]; let d;
+  if (a === 'twin' && b === 'md') d = `M${A.x + 20} ${A.y + A.h} C ${A.x - 60} ${A.y + A.h + 46}, ${B.x + B.w + 40} ${B.y + B.h + 46}, ${B.x + B.w - 30} ${B.y + B.h}`;
+  else if (Math.abs(A.y - B.y) < 30) { const l = A.x < B.x ? [A.x + A.w, B.x] : [A.x, B.x + B.w]; d = `M${l[0]} ${A.y + A.h / 2} L ${l[1]} ${B.y + B.h / 2}`; }
+  else { const x1 = A.x + A.w / 2, y1 = A.y < B.y ? A.y + A.h : A.y, x2 = B.x + B.w / 2, y2 = A.y < B.y ? B.y : B.y + B.h, m = (y1 + y2) / 2; d = `M${x1} ${y1} C ${x1} ${m}, ${x2} ${m}, ${x2} ${y2}`; }
+  svg.append(el('path', { d, class: 'e', 'data-a': a, 'data-b': b }));
+});
+Object.entries(N).forEach(([id, n]) => {
+  const g = el('g', { class: 'n kind-' + n.kind.toLowerCase(), 'data-id': id, tabindex: 0, role: 'button', 'aria-label': n.t + '. ' + n.s });
+  g.append(el('rect', { x: n.x, y: n.y, width: n.w, height: n.h, rx: 14 }));
+  g.append(el('text', { x: n.x + n.w / 2, y: n.y + n.h / 2 - 3, 'text-anchor': 'middle' }, n.t));
+  g.append(el('text', { x: n.x + n.w / 2, y: n.y + n.h / 2 + 15, 'text-anchor': 'middle', class: 'sub' }, n.s));
+  g.onclick = () => showNode(id); g.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showNode(id); } };
+  svg.append(g);
+});
+let flow = null, step = 0, timer = null;
+function paint(ids, sel) {
+  $$('.n', svg).forEach((g) => { const on = ids && ids.includes(g.dataset.id); g.classList.toggle('live', !!on); g.classList.toggle('dim', !!ids && !on); g.classList.toggle('sel', g.dataset.id === sel); });
+  $$('.e', svg).forEach((p) => { const on = ids && ids.includes(p.dataset.a) && ids.includes(p.dataset.b) && (Math.abs(ids.indexOf(p.dataset.a) - ids.indexOf(p.dataset.b)) === 1 || ids.length === 2); p.classList.toggle('live', !!on); p.classList.toggle('dim', !!ids && !on); });
+}
+function showNode(id) {
+  stop(); flow = null; $$('#flows .chip').forEach((c) => c.setAttribute('aria-pressed', 'false'));
+  const n = N[id]; paint(null, id);
+  $('#side').innerHTML = `<span class="tag">${esc(n.kind)}</span><h3>${esc(n.t)}</h3><p class="muted small">${esc(n.s)}</p><p style="margin-top:12px">${esc(n.d)}</p><ul>${(n.f || []).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`;
+}
+function stop() { clearInterval(timer); timer = null; }
+function drawFlow() {
+  const f = flow;
+  $('#side').innerHTML = `<span class="tag">Flow</span><h3>${esc(f.name)}</h3><ol class="steps">${f.steps.map((s, i) => `<li class="${i === step ? 'on' : i < step ? 'done' : ''}">${esc(s[1])}</li>`).join('')}</ol>
+    <div class="ctrl"><button class="btn" id="prev" ${step === 0 ? 'disabled' : ''}>Back</button><button class="btn primary" id="next">${step === f.steps.length - 1 ? 'Replay' : 'Next'}</button><button class="btn" id="auto">${timer ? 'Pause' : 'Play'}</button></div>`;
+  paint(f.steps[step][0]);
+  $('#prev').onclick = () => { stop(); step = Math.max(0, step - 1); drawFlow(); };
+  $('#next').onclick = () => { stop(); step = step === f.steps.length - 1 ? 0 : step + 1; drawFlow(); };
+  $('#auto').onclick = () => { if (timer) { stop(); drawFlow(); } else play(); };
+}
+function play() { stop(); timer = setInterval(() => { if (step === flow.steps.length - 1) { stop(); drawFlow(); return; } step++; drawFlow(); }, 2600); drawFlow(); }
+FLOWS.forEach((f) => {
+  const b = document.createElement('button'); b.className = 'chip'; b.textContent = f.name; b.setAttribute('aria-pressed', 'false');
+  b.onclick = () => { $$('#flows .chip').forEach((c) => c.setAttribute('aria-pressed', c === b ? 'true' : 'false')); flow = f; step = 0; still ? drawFlow() : play(); };
+  $('#flows').append(b);
+});
+$('#flows .chip:last-child').click(); stop(); drawFlow();
+
+// ---- memory meter --------------------------------------------------------------------------
+const CEIL = 1024;
+const METER = [['An open app', 12, null], ['A request’s worker', 38, null], ['Speakers (Sortformer)', 187, 230], ['Ask Mitra (Qwen3 0.6B)', 564, 670], ['Speech (Whisper medium)', 980, 1024], ['Notes (Gemma 3 1B)', 945, 1024]];
+$('#meter').innerHTML = METER.map(([n, mb, cap]) => `<div class="row"><span>${esc(n)}</span><div class="track"><div class="fill ${mb > 800 ? 'hot' : ''}" data-w="${(mb / CEIL * 100).toFixed(1)}"></div>${cap && cap < CEIL ? `<span class="cap" style="left:${(cap / CEIL * 100).toFixed(1)}%" title="cap ${cap} MB"></span>` : ''}<span class="ceil"></span></div><b>${mb} MB</b></div>`).join('');
+const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { $$('.fill', e.target).forEach((f) => (f.style.width = f.dataset.w + '%')); io.unobserve(e.target); } }), { threshold: .3 });
+io.observe($('#meter'));
+// The bars must never depend on the observer alone: a background tab or an old browser may not fire it.
+setTimeout(() => $$('#meter .fill').forEach((f) => { if (!f.style.width) f.style.width = f.dataset.w + '%'; }), 1500);
+
+// ---- timeline of a 16-minute call ----------------------------------------------------------
+const SEG = [];
+let t = 0;
+[187, 177, 177, 171].forEach((mb, i) => { SEG.push({ a: t, z: t + 67, mb, c: 'var(--sky-500)', n: `Speakers, window ${i + 1} of 4`, m: 'Sortformer' }); t += 52; });
+[972, 972, 979].forEach((mb, i) => { SEG.push({ a: t, z: t + 120, mb, c: 'var(--navy-600)', n: `Speech, piece ${i + 1} of 3`, m: 'Whisper medium' }); t += 120; });
+SEG.push({ a: t, z: t + 3, mb: 0, c: 'var(--line-2)', n: 'Gist, quoted by plain code', m: 'no model' }); t += 3;
+SEG.push({ a: t, z: t + 107, mb: 941, c: 'var(--saffron-500)', n: 'Notes, 5 sections', m: 'Gemma 3 1B' }); t += 92;
+(() => {
+  const W = 560, H = 230, L = 44, B = 26, T = 12, X = (s) => L + s / t * (W - L - 8), Y = (mb) => H - B - mb / 1100 * (H - B - T);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Memory held by models during a 16-minute call"><line class="ax" x1="${L}" y1="${H - B}" x2="${W - 8}" y2="${H - B}"/>`;
+  [0, 256, 512, 768, 1024].forEach((mb) => { s += `<line class="ax" x1="${L}" y1="${Y(mb)}" x2="${W - 8}" y2="${Y(mb)}" stroke-dasharray="${mb === 1024 ? '0' : '2 4'}" ${mb === 1024 ? 'style="stroke:var(--bad)"' : ''}/><text x="${L - 6}" y="${Y(mb) + 4}" text-anchor="end">${mb}</text>`; });
+  [0, 180, 360, 540, 720].forEach((sec) => { s += `<text x="${X(sec)}" y="${H - 8}" text-anchor="middle">${sec / 60} min</text>`; });
+  SEG.forEach((g, i) => { s += `<rect class="seg" tabindex="0" data-i="${i}" x="${X(g.a) + 1}" y="${Y(Math.max(g.mb, 8))}" width="${Math.max(2, X(g.z) - X(g.a) - 2)}" height="${H - B - Y(Math.max(g.mb, 8))}" rx="3" fill="${g.c}"/>`; });
+  s += `<text x="${W - 10}" y="${Y(1024) - 5}" text-anchor="end" style="fill:var(--bad)">ceiling 1,024 MB</text></svg>`;
+  $('#timeline').innerHTML = s;
+  const tip = (i) => { const g = SEG[i]; $('#tip').innerHTML = `<b>${esc(g.n)}</b> <span class="muted">· ${esc(g.m)}</span><br>${g.mb ? g.mb + ' MB' : 'no model in memory'}, ${g.z - g.a} s. Before it starts, the previous model has been stopped.`; };
+  $$('#timeline .seg').forEach((r) => { r.onmouseenter = r.onfocus = () => tip(+r.dataset.i); });
+  $('#tip').innerHTML = '<span class="muted">Total about 12 minutes. At no point are two models in memory.</span>';
+})();
+
+// ---- apps ----------------------------------------------------------------------------------
+const ICON = {
+  pdf: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h4"/>',
+  book: '<path d="M4 5c3-1 5-1 8 1 3-2 5-2 8-1v14c-3-1-5-1-8 1-3-2-5-2-8-1z"/><path d="M12 6v14"/>',
+  convert: '<path d="M4 8h12l-3-3M20 16H8l3 3"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  chat: '<path d="M4 5h16v11H9l-5 4z"/>',
+  app: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><path d="M16.500 13v7M13 16.500h7"/>',
+};
+const APPS = [
+  { id: 'pdf', name: 'Mitra PDF', icon: 'pdf', one: 'Read a PDF as pages or as structured text.', opens: ['.pdf'], models: [],
+    feats: ['Page view: the browser’s own viewer', 'Text view: headings, paragraphs and lists from the converter', 'Send to Anything to MD', 'File browser with recent files; drop a PDF anywhere, including over the page'],
+    not: ['Search inside the document', 'Outline panel', 'Read aloud', 'Scanned pages'], mock: 'reader' },
+  { id: 'md', name: 'Markdown Reader', icon: 'book', one: 'Rendered Markdown with an outline and links between files.', opens: ['.md', '.markdown', '.txt'], models: [],
+    feats: ['Rendered view with tables, code and quotes', 'Outline from the headings', 'Source toggle', 'Links between files open in place', 'Opens a TwinMind memo at the line a search found'], not: [], mock: 'reader' },
+  { id: 'tomd', name: 'Anything to MD', icon: 'convert', one: 'Turn a document into Markdown and keep its structure.', opens: ['.docx', '.pptx', '.xlsx', '.html', '.epub', '.rtf', '.odt', '.csv', '.ipynb', 'anything unclaimed'], models: [],
+    feats: ['Word: heading levels, bold, italic, links, nested lists, merged cells', 'PDF: headings from type size, paragraphs joined across pages, headers and footers removed', 'PowerPoint: a section per slide, bullet levels, tables, notes', 'HTML and EPUB: real tables, lists, quotes, reading order', 'Preview, then save beside the source'],
+    not: ['Tables inside PDFs', 'Two-column PDFs', 'Scanned pages'], mock: 'split' },
+  { id: 'twin', name: 'TwinMind', icon: 'mic', one: 'A recording or transcript in. A memo you can check out.', opens: ['.m4a', '.mp3', '.wav', '.ogg', '.flac', '.vtt', '.srt', 'transcripts'], models: ['Sortformer 187 MB', 'Whisper medium 980 MB', 'Gemma 3 1B 945 MB'],
+    feats: ['Who speaks when, on a recording of any length', 'Hindi and English written as one English transcript', 'Gist quoted word for word', 'Discussion points, decisions and action items, each checked against the transcript', 'Every promise or request quoted with its time and speaker', 'Asks who is who, then rewrites the memo with names', 'Search across every meeting'],
+    not: ['Notes can still name the wrong speaker', 'Overlapping speech goes to one person', 'Meeting page with playback', 'Tried on two-person calls up to 16 minutes only'], mock: 'steps' },
+  { id: 'ask', name: 'Ask Mitra', icon: 'chat', one: 'The one general question-and-answer model.', opens: [], models: ['Qwen3 0.6B 564 MB'],
+    feats: ['Answer shows the model, seconds and MB', 'Keeps the thread of a conversation', 'Model is unloaded after every answer'], not: ['Small model: about 8 of 12 on a mixed question set', 'Does not translate Hindi'], mock: 'chat' },
+  { id: 'new', name: 'Apps you create', icon: 'app', one: 'Describe an app in a sentence; it appears as an icon.', opens: ['what you declare'], models: ['only if it has a job for one'],
+    feats: ['mitra-marketplace new "a tracker for supplier quotes"', 'Its own folder, manifest, connector and process', 'Travels with push and update; pack zips one app'], not: ['Starts with a generic workspace until you give it a screen'], mock: 'split' },
+];
+const MOCK = {
+  reader: '<div class="cols"><div><div class="ln"></div><div class="ln s"></div><div class="ln"></div><div class="ln s"></div></div><div><div class="ln h"></div><div class="ln"></div><div class="ln"></div><div class="ln s"></div><div class="ln h" style="width:38%"></div><div class="ln"></div><div class="ln s"></div></div></div>',
+  split: '<div class="cols" style="grid-template-columns:1fr 1fr"><div><div class="ln h"></div><div class="ln"></div><div class="ln s"></div><div class="ln"></div></div><div><div class="ln a"></div><div class="ln"></div><div class="ln s"></div><div class="ln a" style="width:30%"></div><div class="ln"></div></div></div>',
+  steps: '<div class="ln h"></div><div class="ln a" style="width:80%"></div><div class="ln a" style="width:62%"></div><div class="ln" style="width:50%"></div><div class="ln" style="width:44%"></div><div class="ln s"></div>',
+  chat: '<div class="ln a" style="width:46%;margin-left:auto"></div><div class="ln" style="width:70%"></div><div class="ln s" style="width:58%"></div><div class="ln a" style="width:34%;margin-left:auto"></div><div class="ln" style="width:64%"></div>',
+};
+function drawApps(open) {
+  $('#applist').innerHTML = APPS.map((a) => `<button class="app" data-id="${a.id}" aria-expanded="${a.id === open}"><div class="glyph"><svg viewBox="0 0 24 24">${ICON[a.icon]}</svg></div><h3>${esc(a.name)}</h3><p>${esc(a.one)}</p>
+    <div class="pills">${a.models.length ? a.models.map((m) => `<span class="pill m">${esc(m)}</span>`).join('') : '<span class="pill">no model</span>'}</div></button>`).join('');
+  if (open) {
+    const a = APPS.find((x) => x.id === open), at = $(`.app[data-id="${open}"]`), cols = getComputedStyle($('#applist')).gridTemplateColumns.split(' ').length;
+    const idx = APPS.indexOf(a), after = $$('.app')[Math.min(APPS.length - 1, Math.floor(idx / cols) * cols + cols - 1)];
+    const d = document.createElement('div'); d.className = 'detail';
+    d.innerHTML = `<div><h4>What it does</h4><ul>${a.feats.map((f) => `<li>${esc(f)}</li>`).join('')}</ul>${a.not.length ? `<h4>Not yet, or limits</h4><ul>${a.not.map((f) => `<li class="muted">${esc(f)}</li>`).join('')}</ul>` : ''}</div>
+      <div><h4>Opens</h4><div class="pills" style="margin:0 0 16px">${a.opens.length ? a.opens.map((o) => `<span class="pill">${esc(o)}</span>`).join('') : '<span class="pill">no files</span>'}</div>
+      <h4>Its window</h4><div class="mock"><div class="top"><span class="logo"></span><b>${esc(a.name)}</b><span class="pill" style="margin-left:auto">RAM · no model loaded</span></div><div class="body">${MOCK[a.mock]}</div></div></div>`;
+    after.after(d);
+  }
+  $$('.app').forEach((b) => (b.onclick = () => { drawApps(b.dataset.id === open ? null : b.dataset.id); $(`.app[data-id="${b.dataset.id}"]`).focus(); }));
+}
+drawApps('twin');
+
+// ---- pipeline ------------------------------------------------------------------------------
+const PIPE = [
+  { n: 'Who speaks when', s: 'Sortformer', mem: '170 to 187 MB', time: '12 s per minute of audio', how: '5-minute windows that overlap by 45 seconds. A voice keeps its number across windows by who was talking in the overlap.',
+    out: '[00:00 → 00:03]  Speaker 1\n[00:03 → 00:09]  Speaker 2\n[00:09 → 00:11]  Speaker 1\n[00:11 → 00:20]  Speaker 2\n… 130 turns, 2 speakers' },
+  { n: 'What was said', s: 'Whisper medium', mem: '964 to 980 MB', time: '25 s per minute of audio', how: '5-minute pieces cut in pauses, each heard whole, with word timings. Each sentence goes to whoever was talking for most of it.',
+    out: '[00:01:14] Speaker 2: That area, I have to recreate\nthe design. I would require it until at least\nWednesday, if it’s okay.\n[00:01:25] Speaker 1: Wednesday, right? Okay, it\nmeans 18th.\n\nspoken: Hindi and English → written: English' },
+  { n: 'Gist', s: 'no model', mem: '0', time: 'under a second', how: 'Plain code scores every sentence and quotes the two or three most informative, word for word.',
+    out: '> Initially what was sent was from primarily a\n> different perspective from what he told us.\n\nQuoted word for word from the transcript.' },
+  { n: 'Notes', s: 'Gemma 3 1B', mem: '915 to 945 MB', time: 'about 18 s per section', how: 'About 420 words at a time: topic, points, decisions, open questions, and action items as constrained JSON. Qwen3 0.6B takes over if memory is refused.',
+    out: 'Topic: Design proposal\nPoints:\n- The revised design requires recreating\n  elements from the original.\n- A discovery session is to be scheduled.\nActions:\n{"owner": "Speaker 2",\n "task": "Share the proposal with the client",\n "due": "Wednesday"}' },
+  { n: 'The check', s: 'no model', mem: '0', time: 'instant', how: 'A number, owner or date never said is removed. A transcript line pasted in as a note is dropped. A title is kept only if most of its words were said.',
+    out: '<mark>kept</mark>     Share the proposal with the client\n         (due Wednesday)\n<s>removed</s>  due date "Wednesday, 18th" was not said\n<s>removed</s>  "Schedule next session" is not\n         supported by the transcript\n<s>dropped</s>  12 echoed lines ("Correct", "Thank you")' },
+  { n: 'The memo', s: 'Markdown', mem: '0', time: 'instant', how: 'Your MeetingNoter layout, written to the Dropbox folder. The header records every stage, including any that did not run and why. Then the page asks who is who.',
+    out: '# Design proposal\n## Meeting Core Focus\n## Key Discussion Points\n## Action Items\n### Commitments heard\n- [00:01:42] Speaker 2: You tell the client, we\n  will be sharing it by Wednesday.\n## Follow-up Needed\n## Appendix: Transcript' },
+];
+function drawPipe(i) {
+  $('#pipe').innerHTML = PIPE.map((p, k) => `<button class="pstep" role="tab" aria-selected="${k === i}" data-k="${k}"><span class="num">${k + 1}</span><b>${esc(p.n)}</b><span>${esc(p.s)}</span></button>`).join('');
+  const p = PIPE[i];
+  $('#pinfo').innerHTML = `<h3>${i + 1}. ${esc(p.n)}</h3><p style="margin:8px 0 16px">${esc(p.how)}</p><dl class="kv"><dt>Done by</dt><dd>${esc(p.s)}</dd><dt>Memory</dt><dd>${esc(p.mem)}</dd><dt>Time</dt><dd>${esc(p.time)}</dd></dl>`;
+  $('#psample').innerHTML = p.out;
+  $$('.pstep').forEach((b) => (b.onclick = () => { drawPipe(+b.dataset.k); $(`.pstep[data-k="${b.dataset.k}"]`).focus(); }));
+}
+drawPipe(0);
+
+// ---- models --------------------------------------------------------------------------------
+const MODELS = [
+  ['Whisper medium, 5-bit, greedy', 'Speech', '964 to 980 MB', 'Clearly better than small on a real call: what was pitched, who tells whom, clean short sentences. About 2.6 times slower. Switched on 13 November.', 'use', 'In use'],
+  ['Gemma 3 1B Q4_K_M', 'Notes', '915 to 945 MB', 'Concrete points and real tasks; nothing echoed.', 'use', 'In use'],
+  ['Whisper small Q5_1', 'Speech', '605 to 637 MB', 'Follows Hindi and English mixed. Takes over if medium is refused memory.', 'maybe', 'Step-down'],
+  ['Qwen3 0.6B', 'Ask Mitra', '564 MB', '8 of 12 on a mixed question set, in 18 s.', 'use', 'In use'],
+  ['Sortformer (Nemotron 3) Q8', 'Speakers', '170 to 187 MB', 'Two speakers found on both calls; flat memory in windows.', 'use', 'In use'],
+  ['Gemma 3 1B for Ask Mitra', 'Ask Mitra', '856 MB', '7 to 8 of 12, in 35 s. Knew a fact Qwen missed; got arithmetic wrong that Qwen got right.', 'no', 'No gain'],
+  ['Gemma 3 1B Q4_0', 'Notes', '830 MB', 'Thinner notes than Q4_K_M on the same call.', 'maybe', 'Fallback candidate'],
+  ['Whisper medium, default decoding', 'Speech', '1,234 to 1,268 MB', 'Same quality as greedy.', 'no', 'Over the ceiling'],
+  ['Whisper large-v3-turbo, 5-bit', 'Speech', '861 MB', 'Dropped whole stretches and looped; not trained to translate.', 'no', 'Rejected'],
+  ['SmolLM2 1.7B Q3_K_S', 'Notes', '998 MB', 'Garbled title, one task.', 'no', 'Rejected'],
+  ['SmolVLM 256M with projector', 'Scanned pages', '404 MB', 'Read five lines of a test page correctly in 3 s, then invented a table. Runs in the runtime already packaged.', 'maybe', 'Feasible, needs guarding'],
+  ['all-MiniLM-L6 + TinyBERT reranker', 'Search by meaning', 'not measured', '30 MB of models; needs onnxruntime installed.', 'maybe', 'Feasible, not tried'],
+  ['Piper TTS, amy', 'Read aloud', 'not measured', 'The packaged audio runtime refused this file’s packaging.', 'no', 'Needs another runtime'],
+  ['Silero VAD (ONNX)', 'Skip silence', 'not measured', 'whisper.cpp needs its own build of this model; not in the library.', 'no', 'Wrong format'],
+  ['Docling, Florence-2, TrOCR, layout models', 'Documents', 'over 2 GB', 'Need PyTorch.', 'no', 'Outside limits'],
+];
+const FILTERS = [['all', 'All'], ['use', 'In use'], ['maybe', 'Feasible or fallback'], ['no', 'Rejected']];
+function drawModels(f) {
+  $('#filters').innerHTML = FILTERS.map(([k, n]) => `<button class="chip" aria-pressed="${k === f}" data-k="${k}">${n} <span class="muted">${k === 'all' ? MODELS.length : MODELS.filter((m) => m[4] === k).length}</span></button>`).join('');
+  $('#mrows').innerHTML = MODELS.filter((m) => f === 'all' || m[4] === f).map((m) => `<tr><td><b>${esc(m[0])}</b></td><td>${esc(m[1])}</td><td class="num">${esc(m[2])}</td><td>${esc(m[3])}</td><td><span class="v ${m[4]}">${esc(m[5])}</span></td></tr>`).join('');
+  $$('#filters .chip').forEach((b) => (b.onclick = () => drawModels(b.dataset.k)));
+}
+drawModels('all');
+$('#combos').innerHTML = [
+  ['Better transcript, better notes', ['Whisper medium', 'Gemma 3 1B'], 'The notes model repeats every transcript error as fact, so a better transcript is the largest single gain to the notes too.', 'Switched on 13 November. 980 MB then 945 MB, one after the other. A 16-minute call takes about 12 minutes instead of 7.'],
+  ['Tasks that trace to a sentence', ['Quoted commitments', 'Gemma 3 1B'], 'Build action items from the sentences already quoted, with the model only naming owner, task and date for each.', 'No new model.'],
+  ['Ask your meetings', ['MiniLM', 'Reranker', 'Gemma 3 1B'], 'Find passages by meaning across every memo and answer with the meeting and timestamp cited.', '30 MB of models and one added Python package.'],
+  ['Scans become text', ['Page image', 'SmolVLM 256M', 'Check'], 'Scanned PDFs and photos readable in Anything to MD and Mitra PDF.', '266 MB in the package, 404 MB while reading.'],
+].map(([h, chain, why, cost]) => `<div class="card"><h3>${esc(h)}</h3><div class="chain">${chain.map((c) => `<span>${esc(c)}</span>`).join('<i>→</i>')}</div><p>${esc(why)}</p><p class="muted small" style="margin-top:8px">${esc(cost)}</p></div>`).join('');
+
+// ---- rules ---------------------------------------------------------------------------------
+$('#rulelist').innerHTML = [
+  ['Nothing in memory when nothing is open', 'Launcher and apps exit on close, workers on answer, models after each use.'],
+  ['One model at a time', 'A single lock in the governor, shared by every app.'],
+  ['No model above 1,024 MB', 'Checked before start, capped per model, sampled twice a second.'],
+  ['Apps are separate products', 'Separate processes and ports; a request for another app is refused.'],
+  ['Only this device', 'Listens on 127.0.0.1; foreign hosts and origins refused; no path escapes its folder.'],
+  ['Every use is logged', 'One log for all processes, including refusals and stops.'],
+].map(([b, s]) => `<div class="rule"><b>${esc(b)}</b><span>${esc(s)}</span></div>`).join('');
+
+// ---- nav highlight -------------------------------------------------------------------------
+const links = $$('.bar nav a');
+const spy = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) links.forEach((a) => a.classList.toggle('on', a.getAttribute('href') === '#' + e.target.id)); }), { rootMargin: '-40% 0px -55% 0px' });
+$$('section[id]').forEach((s) => spy.observe(s));
+</script>
+</body>
+</html>

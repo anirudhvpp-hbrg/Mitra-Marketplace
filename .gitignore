@@ -1,0 +1,14 @@
+# models and runtimes are large and are not ours to redistribute: see README, "Models and runtimes"
+models/
+runtimes/
+# build output; `build.ps1` / `build.sh` make these
+bin/
+governor/target/
+__pycache__/
+*.pyc
+# another project's source, kept locally for reference only
+reference/*.zip
+# local editor and agent state
+.claude/
+.vscode/
+*.tmp

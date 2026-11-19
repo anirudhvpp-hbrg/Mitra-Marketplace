@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitra app</title>
+<link rel="stylesheet" href="/static/mitra.css">
+</head>
+<body>
+<!-- Generic workspace: what an app created from a prompt runs on until it gets its own ui/. -->
+<div class="split">
+  <aside id="files"></aside>
+  <main><div class="wrap" style="max-width:820px">
+    <h1 id="name" style="margin-top:0"></h1>
+    <p id="desc" class="muted"></p>
+    <div class="card" id="askbox" hidden>
+      <label for="q">Ask about the selected file, or anything</label>
+      <textarea id="q" rows="3" style="font-family:var(--sans);font-size:15px"></textarea>
+      <div class="row" style="margin-top:8px"><button class="primary" id="ask">Ask</button><span class="muted small" id="sel"></span></div>
+      <div class="md" id="answer" style="padding:10px 0 0;max-width:none"></div>
+    </div>
+    <h3>Architecture</h3>
+    <div class="card"><table class="plain" id="arch"></table></div>
+    <h3>Original prompt</h3>
+    <div class="card small" id="prompt" style="white-space:pre-wrap"></div>
+    <p class="muted small">This app runs on the generic workspace. Its folder is <span class="mono" id="dir"></span>; add <span class="mono">ui/index.html</span> and <span class="mono">worker.py</span> there to give it its own interface and logic. Remove it from the launcher (point at its icon, then ×).</p>
+  </div></main>
+</div>
+<script src="/static/sdk.js"></script>
+<script>
+const M = mitra, $ = (s) => document.querySelector(s);
+let selected = null, text = '';
+M.ready.then(async (app) => {
+  $('#name').textContent = app.name; $('#desc').textContent = app.description || '';
+  $('#prompt').textContent = app.prompt || '(none)'; $('#dir').textContent = app.dir;
+  $('#arch').innerHTML = [
+    ...app.connectors.map((c) => ['Connector', `${c.type} → ${c.resolved || 'not resolved'}`, c.available]),
+    ...app.needs.map((n) => [n.capability, n.ready ? `${n.model}, about ${n.est_mb} MB while running` : n.hint, n.ready]),
+    ...(app.needs.length ? [] : [['Models', 'None needed', true]]),
+    ['Output', (app.output || {}).format || 'markdown', true],
+  ].map(([k, v, ok]) => `<tr><td>${M.esc(k)}</td><td>${M.esc(v)}</td><td><span class="chip ${ok ? 'ok' : 'warn'}">${ok ? 'ready' : 'pending'}</span></td></tr>`).join('');
+  const conn = app.connectors.find((c) => c.available);
+  M.browser($('#files'), { start: conn ? conn.resolved : null, onPick: async (p) => {
+    selected = p; $('#sel').textContent = 'Using: ' + p.split(/[\\/]/).pop();
+    try { text = (await M.api('/api/convert?path=' + encodeURIComponent(p))).markdown; } catch (e) { text = ''; M.toast(e.message); }
+  } });
+  if (app.needs.some((n) => n.capability === 'assistant')) {
+    $('#askbox').hidden = false;
+    $('#ask').onclick = async () => {
+      $('#ask').disabled = true; $('#answer').textContent = 'Loading the model, answering, unloading…';
+      M.log('action.ask', { with_file: !!selected });
+      try {
+        const prompt = (text ? `Document:\n${text.slice(0, 4000)}\n\n` : '') + $('#q').value;
+        const r = await M.api('/api/ask', { body: { app_id: app.id, prompt } });
+        $('#answer').innerHTML = M.md(r.text) + `<p class="small muted">${M.esc(r.model)} · ${(r.ms / 1000).toFixed(1)} s · ${r.mb ?? '?'} MB while running · unloaded</p>`;
+      } catch (e) { $('#answer').textContent = e.message; }
+      $('#ask').disabled = false;
+    };
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "id": "markdown-reader",
+  "name": "Markdown Reader",
+  "tagline": "Read Markdown and text",
+  "glyph": "doc",
+  "category": "Documents",
+  "version": "0.9.0",
+  "description": "Open any Markdown or text file and read it properly rendered, with an outline.",
+  "connectors": [],
+  "needs": [],
+  "uses": [
+    "convert"
+  ],
+  "opens": [
+    ".md",
+    ".markdown",
+    ".txt"
+  ]
+}

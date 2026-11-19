@@ -1,0 +1,156 @@
+PIECE_S = 300.0     # transcription piece, seconds
+_NOISE = re.compile(r"\s*\[[^\]]{0,40}\]\s*|\s*\((silence|music|laughs?|laughter|inaudible|applause|speaking in (a )?foreign language)[^)]*\)\s*", re.I)
+_END = re.compile(r"[.?!][\"')\]]*$")
+_CLAUSE = re.compile(r"[,;:.?!][\"')\]]*$")
+
+
+def transcribe_plan(p: dict) -> tuple[list[str], str]:
+    """How the transcriber is asked to treat language. `transcribe_language` in the config is
+    "english" (the default: whatever is spoken comes out in English, so a meeting that moves between
+    Hindi and English reads as one transcript), "original" (keep each language as spoken), or a
+    language code such as "hi". A model that only knows English ignores it."""
+    if ".en" in Path(p["file"]).name:
+        return [], "English-only model"
+    want = str(paths.config().get("transcribe_language") or "english").lower()
+    if want == "english":
+        return ["-l", "auto", "-tr"], "written in English whatever was spoken"
+    if want == "original":
+        return ["-l", "auto"], "kept in the language spoken"
+    return ["-l", want], f"language set to {want}"
+
+
+def _dedupe_words(words: list[dict]) -> list[dict]:
+    """A speech model that loses its place repeats itself ("then, then, then ..."). More than two
+    of the same word in a row is that, not speech."""
+    out = []
+    for w in words:
+        key = re.sub(r"\W+", "", w["text"].lower())
+        if key and len(out) >= 2 and all(re.sub(r"\W+", "", o["text"].lower()) == key for o in out[-2:]):
+            out[-1]["end"] = w["end"]
+            continue
+        out.append(w)
+    return out
+
+
+def words_to_lines(words: list[dict], turns: list[dict] | None = None, max_s: float = 30.0, max_chars: int = 380) -> list[dict]:
+    """Timed words into transcript lines. With speaker turns, each clause goes to the speaker who was
+    talking for most of it, and a line ends when the speaker changes; without, lines are sentences."""
+    words = _dedupe_words([w for w in words if w["text"].strip()])
+    if not words:
+        return []
+
+    def who(w):
+        best, most = None, 0.0
+        for t in turns or []:
+            if t["start"] > w["end"] + 0.6:
+                break
+            share = min(w["end"], t["end"]) - max(w["start"], t["start"])
+            if share <= 0:      # a word the diarizer heard no one say: lean to the nearest turn
+                gap = max(t["start"] - w["end"], w["start"] - t["end"])
+                share = 0.02 if gap < 0.6 else 0.0
+            if share > most:
+                best, most = t["speaker"], share
+        return best, most
+
+    clauses, cur = [], []
+    for i, w in enumerate(words):
+        cur.append(w)
+        gap = words[i + 1]["start"] - w["end"] if i + 1 < len(words) else 9.0
+        if _CLAUSE.search(w["text"].strip()) or gap > 1.5 or len(cur) >= 40:
+            clauses.append(cur)
+            cur = []
+    if cur:
+        clauses.append(cur)
+    units = []
+    for c in clauses:
+        tally: dict[str, float] = {}
+        for w in c:
+            s, share = who(w)
+            if s:
+                tally[s] = tally.get(s, 0.0) + share
+        units.append({"start": c[0]["start"], "end": c[-1]["end"], "text": " ".join(w["text"].strip() for w in c),
+                      "speaker": max(tally, key=tally.get) if tally else None, "n": len(c),
+                      "stop": bool(_END.search(c[-1]["text"].strip()))})
+    if turns:
+        for i, u in enumerate(units):               # a clause no turn covers stays with whoever was speaking
+            if u["speaker"] is None:
+                u["speaker"] = units[i - 1]["speaker"] if i else next((x["speaker"] for x in units if x["speaker"]), None)
+        for i in range(1, len(units) - 1):          # one or two words mid-sentence flipping speaker is timing jitter
+            a, u, z = units[i - 1], units[i], units[i + 1]
+            if u["n"] <= 2 and not u["stop"] and not a["stop"] and a["speaker"] == z["speaker"] != u["speaker"]:
+                u["speaker"] = a["speaker"]
+    lines = []
+    for u in units:
+        last = lines[-1] if lines else None
+        same = last and last["speaker"] == u["speaker"]
+        fits = last and u["end"] - last["start"] <= max_s and len(last["text"]) + len(u["text"]) < max_chars
+        if same and fits and (turns or not last["stop"] or len(last["text"]) < 140) and u["start"] - last["end"] < 4.0:
+            last["end"], last["text"], last["stop"] = u["end"], last["text"] + " " + u["text"], u["stop"]
+        else:
+            lines.append({"start": u["start"], "end": u["end"], "text": u["text"], "speaker": u["speaker"], "stop": u["stop"]})
+    out, seen = [], []
+    for l in lines:
+        key = re.sub(r"\W+", " ", l["text"].lower()).strip()
+        if key and seen[-2:] == [key, key]:          # the same line three times running is the model looping
+            continue
+        seen.append(key)
+        d = {"start": l["start"], "end": l["end"], "text": l["text"]}
+        if l["speaker"]:
+            d["speaker"] = l["speaker"]
+        out.append(d)
+    return out
+
+
+def transcribe(app: str, audio: Path, wav_ready: bool = False, progress=None, turns: list[dict] | None = None,
+               info: dict | None = None) -> list[dict]:
+    """Speech to text with whisper.cpp. Returns [{start, end, text[, speaker]}].
+
+    The recording is transcribed in pieces of at most PIECE_S seconds, cut in pauses, so the memory
+    needed does not grow with the length of the meeting, and each piece is heard whole so the model
+    has the conversation around every word. With `turns` (from `diarize`), every clause is given to
+    the speaker who was talking then. `info`, if given, receives the model, language and notes."""
+    import wave
+    p = pick("transcription")
+    if not p["ready"]:
+        raise ModelUnavailable(p.get("hint", "Transcription is not available."))
+    wav, made = (audio, False) if wav_ready else prepare_wav(audio)
+    lang_args, lang_note = transcribe_plan(p)
+    piece_dir = paths.HOME / "tmp" / f"pieces-{int(time.time() * 1000)}"
+    piece_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        with wave.open(str(wav), "rb") as src:
+            total = src.getnframes() / float(src.getframerate())
+            cuts = [0.0]
+            while total - cuts[-1] > PIECE_S * 1.25:
+                cuts.append(_quiet_point(src, cuts[-1] + PIECE_S))
+            cuts.append(total)
+            for i in range(len(cuts) - 1):
+                _write_piece(src, cuts[i], cuts[i + 1], piece_dir / f"p{i:04d}.wav")
+        words, langs = [], []
+        for i in range(len(cuts) - 1):
+            if progress:
+                progress(f"part {i + 1} of {len(cuts) - 1}" if len(cuts) > 2 else p["model"])
+            f = piece_dir / f"p{i:04d}.wav"
+            _run_model(app, p, [p["runtime_path"], "-m", p["file"], "-f", str(f), "-oj", "-np", "-of", str(piece_dir / f"p{i:04d}"),
+                                "-t", str(paths.config()["threads"]), "-ml", "1", "-sow", *lang_args])
+            data = json.loads((piece_dir / f"p{i:04d}.json").read_text("utf-8", errors="replace"))
+            langs.append((data.get("result") or {}).get("language") or "")
+            for s in data.get("transcription", []):
+                text = _NOISE.sub(" ", s.get("text", "")).strip()
+                if text:
+                    words.append({"start": cuts[i] + s["offsets"]["from"] / 1000, "end": cuts[i] + s["offsets"]["to"] / 1000, "text": text})
+            f.unlink(missing_ok=True)
+        if info is not None:
+            heard = sorted({l for l in langs if l})
+            info.update(model=p["model"], language=", ".join(heard) or "unknown", note=lang_note, pieces=len(cuts) - 1,
+                        translated="-tr" in lang_args and any(l != "en" for l in heard))
+        return words_to_lines(words, turns)
+    finally:
+        shutil.rmtree(piece_dir, ignore_errors=True)
+        if made:
+            wav.unlink(missing_ok=True)
+
+
+def transcribe_turns(app: str, wav: Path, turns: list[dict], progress=None) -> list[dict]:
+    """Kept for callers of the earlier name: transcription with speakers."""
+    return transcribe(app, wav, wav_ready=True, progress=progress, turns=turns)

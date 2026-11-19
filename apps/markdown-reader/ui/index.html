@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markdown Reader</title>
+<link rel="stylesheet" href="/static/mitra.css">
+<style>
+  .tools { display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 5; }
+  .tools .name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #toc a { display: block; padding: 3px 8px; color: var(--muted); font-size: 13px; border-radius: 5px; }
+  #toc a:hover { background: var(--chip); text-decoration: none; color: var(--ink); }
+  .found { background: var(--glow-c); box-shadow: -6px 0 0 var(--action-2); border-radius: 0 6px 6px 0; scroll-margin: 90px; }
+  #raw { white-space: pre-wrap; font: 13px/1.6 var(--mono); padding: 22px; max-width: 100ch; margin: 0 auto; }
+  /* the outline keeps its own place at the foot of the side panel, so a long folder never pushes it out of sight */
+  .split > aside { display: flex; flex-direction: column; overflow: hidden; }
+  #files { flex: 1 1 auto; overflow: auto; min-height: 120px; }
+  #toc { flex: 0 0 auto; max-height: 45%; overflow: auto; border-top: 1px solid var(--line); }
+  #toc:empty { display: none; }
+  #toc a.here { color: var(--ink); background: var(--chip); box-shadow: inset 2px 0 0 var(--action); }
+  @media (max-width: 760px) { .split > aside { overflow: auto; } #toc { max-height: none; } }
+</style>
+</head>
+<body>
+<div class="split">
+  <aside><div id="files"></div><div id="toc" style="padding:0 10px 16px"></div></aside>
+  <main>
+    <div class="tools" hidden id="tools"><span class="name" id="name"></span>
+      <button id="toggle">Source</button><button id="copy">Copy path</button></div>
+    <div class="empty" id="empty">Pick a Markdown or text file on the left, or drop one anywhere in this window.</div>
+    <article class="md" id="view" hidden></article>
+    <pre id="raw" hidden></pre>
+  </main>
+</div>
+<script src="/static/sdk.js"></script>
+<script>
+const M = mitra, $ = (s) => document.querySelector(s);
+let current = null, source = false;
+async function open(path, name) {
+  let r;
+  try { r = await M.api('/api/convert?path=' + encodeURIComponent(path)); } catch (e) { return M.toast(e.message); }
+  if (name) { r.name = name; r.dropped = true; }   // a dropped file: show its own name, not the temporary copy's
+  current = r; $('#empty').hidden = true; $('#tools').hidden = false;
+  $('#name').textContent = r.name; $('#name').title = r.dropped ? r.name + ' (dropped here; Windows does not say where it lives)' : r.path; $('#copy').hidden = !!r.dropped;
+  $('#view').innerHTML = M.md(r.markdown, r.dir); $('#raw').textContent = r.markdown;
+  // every heading gets the id other tools give it (lower case, dashes), so "#some-heading" links in the file work
+  const used = {};
+  [...$('#view').querySelectorAll('h1,h2,h3,h4,h5,h6')].forEach((h) => {
+    let id = h.textContent.trim().toLowerCase().replace(/[^\wऀ-෿\- ]+/g, '').replace(/\s+/g, '-') || 'section';
+    if (used[id] !== undefined) id += '-' + ++used[id]; else used[id] = 0;
+    h.id = id;
+  });
+  const heads = [...$('#view').querySelectorAll('h1,h2,h3')];
+  $('#toc').innerHTML = heads.length > 1 ? '<h4 style="margin:14px 2px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Outline</h4>' +
+    heads.map((h) => `<a href="#${h.id}" style="padding-left:${8 + (h.tagName[1] - 1) * 12}px">${M.esc(h.textContent)}</a>`).join('') : '';
+  show(); document.querySelector('main').scrollTop = 0;
+  const find = M.param('find');   // arriving from a search result: go to the passage and mark it
+  if (find) {
+    const want = find.replace(/[*_`\[\]]/g, '').toLowerCase().slice(0, 60);
+    const hit = [...$('#view').querySelectorAll('p, li, blockquote, td')].reverse().find((el) => el.textContent.toLowerCase().includes(want));
+    if (hit) { hit.classList.add('found'); hit.scrollIntoView({ block: 'center' }); }
+  }
+  M.log('action.read', { ext: r.name.split('.').pop(), chars: r.markdown.length });
+}
+function show() { $('#view').hidden = source; $('#raw').hidden = !source; $('#toggle').textContent = source ? 'Rendered' : 'Source'; }
+// the outline marks the section being read, as Obsidian and VS Code do
+document.querySelector('main').addEventListener('scroll', () => {
+  const heads = [...$('#view').querySelectorAll('h1[id],h2[id],h3[id]')], top = document.querySelector('main').getBoundingClientRect().top + 90;
+  const at = heads.filter((h) => h.getBoundingClientRect().top < top).pop();
+  $('#toc').querySelectorAll('a').forEach((a) => a.classList.toggle('here', !!at && a.getAttribute('href') === '#' + at.id));
+}, { passive: true });
+$('#toggle').onclick = () => { source = !source; show(); M.log('action.toggle_source', { source }); };
+// a link to another file beside this one opens that file here, instead of leading nowhere
+$('#view').addEventListener('click', (e) => {
+  const a = e.target.closest('a'); if (!a) return;
+  const href = a.getAttribute('href') || '';
+  if (/^(https?:|mailto:|#|\/)/i.test(href) || !current.dir) return;
+  e.preventDefault();
+  const [file, anchor] = decodeURIComponent(href).split('#');
+  const sep = current.dir.includes('\\') ? '\\' : '/';
+  const target = (current.dir.replace(/[\\/]$/, '') + sep + file.replace(/^\.\//, '')).replace(/[\\/]/g, sep);
+  M.log('file.open', { path: target, via: 'link' });
+  if (/\.(md|markdown|txt)$/i.test(file)) open(target).then(() => anchor && document.getElementById(anchor)?.scrollIntoView());
+  else M.launch(/\.pdf$/i.test(file) ? 'pdf-reader' : 'to-markdown', { path: target });   // another app: start it, do not navigate this one
+});
+$('#copy').onclick = () => navigator.clipboard.writeText(current.path).then(() => M.toast('Path copied'));
+M.accept = { exts: ['.md', '.markdown', '.txt'], open };
+M.ready.then(async () => {
+  const start = M.param('path'), dropped = M.param('name');
+  const fb = await M.browser($('#files'), { exts: ['.md', '.markdown', '.txt'], onPick: open, start: start && !dropped ? start.replace(/[\\/][^\\/]*$/, '') : null });
+  if (start) { if (!dropped) fb.select(start); open(start, dropped); }
+});
+</script>
+</body>
+</html>

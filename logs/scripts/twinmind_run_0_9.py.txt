@@ -1,0 +1,411 @@
+# ---- time: what a recording will take on this device ------------------------------------------
+# Seconds of work per minute of audio, and per section of notes. The defaults were measured on the
+# development laptop (2026-11-13); after every finished job they are replaced by this device's own.
+RATES_FILE = paths.HOME / "run" / "twinmind-rates.json"
+RATES = {"diarize": 15.8, "notes": 21.0, "sections_per_min": 0.36,
+         "transcribe": {"whisper-medium-q5_0-cpp": 25.0, "whisper-small-q5_1-cpp": 10.5, "whisper-base-q5_1-cpp": 5.0}}
+
+
+def rates() -> dict:
+    out = json.loads(json.dumps(RATES))
+    try:
+        own = json.loads(RATES_FILE.read_text("utf-8"))
+        out.update({k: v for k, v in own.items() if k != "transcribe"}, measured=True)
+        out["transcribe"].update(own.get("transcribe") or {})
+    except (OSError, ValueError):
+        pass
+    return out
+
+
+def learn(key: str, value: float, model: str | None = None):
+    """Fold one measured rate into this device's own (half old, half new)."""
+    if not value or value <= 0:
+        return
+    try:
+        own = json.loads(RATES_FILE.read_text("utf-8"))
+    except (OSError, ValueError):
+        own = {}
+    box = own.setdefault("transcribe", {}) if model else own
+    k = model or key
+    box[k] = round((box[k] + value) / 2 if k in box else value, 2)
+    RATES_FILE.parent.mkdir(parents=True, exist_ok=True)
+    RATES_FILE.write_text(json.dumps(own), "utf-8")
+
+
+def plan_for(seconds: float, speed: str) -> dict:
+    """Stages, pieces and estimated seconds for a recording of this length at this speed."""
+    r, mins = rates(), seconds / 60
+    p = models.transcription_choice(speed)
+    model = p.get("model") or "?"
+    windows = len(models.diar_windows(seconds))
+    pieces = max(1, round(seconds / models.PIECE_S))
+    sections = max(1, round(r["sections_per_min"] * mins))
+    per = r["transcribe"].get(model) or RATES["transcribe"].get(model) or 25.0
+    est = {"diarize": r["diarize"] * mins, "transcribe": per * mins, "understand": r["notes"] * sections}
+    return {"speed": speed, "model": model, "windows": windows, "pieces": pieces, "sections": sections,
+            "seconds": round(sum(est.values())), "stages": {k: round(v) for k, v in est.items()}, "measured": bool(r.get("measured"))}
+
+
+def estimate(req):
+    """How long this file will take at each speed, before anything runs."""
+    src = Path(req.q("path", required=True))
+    if src.suffix.lower() not in AUDIO:
+        return {"audio": False}
+    secs = models.audio_seconds(src)
+    if not secs:
+        return {"audio": True, "seconds": None}
+    out = {"audio": True, "seconds": round(secs), "accurate": plan_for(secs, "accurate"), "fast": plan_for(secs, "fast")}
+    out["same_model"] = out["accurate"]["model"] == out["fast"]["model"]
+    return out
+
+
+# ---- the line of recordings -------------------------------------------------------------------
+LINE = paths.HOME / "run" / "twinmind-line.json"
+RUNNER = paths.HOME / "run" / "twinmind-runner.json"
+
+
+def _read(f: Path, default):
+    try:
+        return json.loads(f.read_text("utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
+def _write(f: Path, obj):
+    f.parent.mkdir(parents=True, exist_ok=True)
+    tmp = f.with_suffix(".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False), "utf-8")
+    tmp.replace(f)
+
+
+def _runner() -> dict | None:
+    """The process working through recordings now, if one is alive."""
+    r = _read(RUNNER, None)
+    if r and work.alive(r.get("pid")):
+        return r
+    RUNNER.unlink(missing_ok=True)
+    return None
+
+
+def _take_runner(job_id: str) -> bool:
+    if _runner():
+        return False
+    try:
+        with open(RUNNER, "x", encoding="utf-8") as f:
+            f.write(json.dumps({"pid": os.getpid(), "job": job_id}))
+        return True
+    except FileExistsError:
+        return False
+
+
+def _item(b: dict) -> dict:
+    src = Path(b["path"])
+    if not src.is_file():
+        raise ValueError(f"Not found: {src}")
+    return {"path": str(src), "name": b.get("name") or src.name, "title": (b.get("title") or "").strip(),
+            "attendees": (b.get("attendees") or "").strip(), "speed": "fast" if b.get("speed") == "fast" else "accurate",
+            "fresh": bool(b.get("fresh")), "added": time.time()}
+
+
+def _work_for(item: dict) -> work.Work:
+    lang = paths.config().get("transcribe_language") or "english"
+    return work.Work(Path(item["path"]), item["speed"], lang)
+
+
+def state(req):
+    """What the page needs to draw: the job running now, the recordings waiting, and jobs that stopped."""
+    r = _runner()
+    line = _read(LINE, [])
+    for it in line:
+        secs = models.audio_seconds(Path(it["path"])) if Path(it["path"]).suffix.lower() in AUDIO else None
+        it["seconds"] = round(secs) if secs else None
+        it["estimate"] = plan_for(secs, it["speed"])["seconds"] if secs else None
+    stopped = []
+    for m in work.unfinished():
+        if r and m.get("key") == r.get("key"):
+            continue
+        item = m.get("item") or {}
+        left = None
+        if m.get("seconds_audio"):
+            plan, prog = plan_for(m["seconds_audio"], item.get("speed", "accurate")), m.get("progress") or {}
+            left = round(sum(secs * (1 - (prog.get(k, [0, 1])[0] / max(1, prog.get(k, [0, 1])[1]))) for k, secs in plan["stages"].items()))
+        stopped.append({"key": m["key"], "item": item, "name": item.get("name") or Path(m.get("source", "")).name, "progress": m.get("progress") or {},
+                        "state": m.get("state"), "stage": m.get("stage"), "why": m.get("why") or "", "touched": m.get("touched"),
+                        "source_missing": bool(m.get("source_missing")), "left_s": left})
+    return {"running": r, "line": line, "unfinished": stopped}
+
+
+def set_line(req):
+    """Reorder or remove waiting recordings: `order` is the old positions in their new order."""
+    old = _read(LINE, [])
+    order = [int(i) for i in (req.json().get("order") or []) if 0 <= int(i) < len(old)]
+    _write(LINE, [old[i] for i in dict.fromkeys(order)])
+    return {"line": len(order)}
+
+
+def pause(req):
+    """Stop after the piece in hand. Everything finished stays on disk; the model is freed."""
+    r = _runner()
+    if not r or not r.get("key"):
+        return {"paused": False}
+    (work.ROOT / r["key"] / "pause").write_text("", "utf-8")
+    return {"paused": True}
+
+
+def stop(req):
+    """Stop now. The piece in hand is lost; the finished ones are kept until they are discarded."""
+    r = _runner()
+    if not r:
+        return {"stopped": False}
+    try:
+        os.kill(int(r["pid"]), signal.SIGTERM)      # the governor sees its caller gone and stops the model
+    except OSError:
+        pass
+    RUNNER.unlink(missing_ok=True)
+    jf = paths.HOME / "run" / "jobs" / f"{r['job']}.json"
+    j = _read(jf, None)
+    if j and j.get("status") == "running":
+        j.update(status="stopped", error=None)
+        _write(jf, j)
+    if r.get("key"):
+        m = _read(work.ROOT / r["key"] / "job.json", None)
+        if m:
+            m.update(state="stopped", why="You stopped it.", pid=0)
+            _write(work.ROOT / r["key"] / "job.json", m)
+    memory.log("twinmind", "job.stopped", {"job": r["job"]})
+    return {"stopped": True}
+
+
+def discard(req):
+    """Throw away the saved pieces of a job that stopped. They go to the Recycle Bin."""
+    key = re.sub(r"[^0-9a-f]", "", str(req.json().get("key") or ""))
+    r = _runner()
+    d = work.ROOT / key
+    if not key or not d.is_dir() or (r and r.get("key") == key):
+        return {"discarded": False}
+    return {"discarded": True, "to": work.recycle(d)}
+
+
+def run(req):
+    """Write the memo for one recording, then for each one waiting in the line. If recordings are
+    already being worked through, this one joins the line instead."""
+    item, job = _item(req.json()), req.job
+    if not _take_runner(job.id):
+        line = _read(LINE, [])
+        line.append(item)
+        _write(LINE, line)
+        memory.log("twinmind", "job.queued", {"position": len(line), "ext": Path(item["path"]).suffix.lower()})
+        return {"queued": True, "position": len(line)}
+    out = None
+    try:
+        while True:
+            w = None
+            try:
+                if item.get("fresh"):
+                    work.recycle(_work_for(item).dir)
+                w = _work_for(item)
+                (w.dir / "pause").unlink(missing_ok=True)
+                _write(RUNNER, {"pid": os.getpid(), "job": job.id, "key": w.key})
+                out = process(item, job, w)
+            except work.Paused:
+                w.note(state="paused", why="You paused it.", pid=0)
+                job.state.update(status="paused", seconds=round(time.time() - job.state["started"], 1))
+                job.save()
+                memory.log("twinmind", "job.paused", {"progress": w.meta.get("progress")})
+                return None
+            except Exception as e:
+                if w:
+                    w.note(state="failed", why=str(e)[:300], pid=0)
+                line = _read(LINE, [])
+                if not line:
+                    raise
+                memory.log("twinmind", "error", {"msg": str(e), "trace": traceback.format_exc()[-800:]})
+                out = None
+                job.finish(error=str(e))
+            line = _read(LINE, [])
+            if not line:
+                return out
+            item = line.pop(0)
+            _write(LINE, line)
+            # each recording is its own job; the page follows `next` from one to the other
+            nxt = f"{time.time_ns():x}"
+            job.state["next"] = nxt
+            if job.state["status"] == "running":
+                job.finish(result=out)
+            else:
+                job.save()
+            job = req.job = type(job)(nxt, "twinmind")
+    finally:
+        r = _read(RUNNER, None)
+        if r and r.get("pid") == os.getpid():
+            RUNNER.unlink(missing_ok=True)
+
+
+def process(item: dict, job, w) -> dict:
+    src = Path(item["path"])
+    title = item["title"]
+    attendees = [a.strip() for a in item["attendees"].split(",") if a.strip()]
+    stages, flags = {}, []
+    is_audio = src.suffix.lower() in AUDIO
+    secs = models.audio_seconds(src) if is_audio else None
+    plan = plan_for(secs, item["speed"]) if secs else None
+    w.note(state="running", item=item, seconds_audio=secs, why="", job=job.id)
+    if w.resumed:
+        memory.log("twinmind", "job.resumed", {"progress": w.meta.get("progress")})
+    job.state.update(item={k: item[k] for k in ("path", "name", "speed")}, key=w.key, seconds_audio=secs, resumed=w.resumed,
+                     progress=dict(w.meta.get("progress") or {}), plan=plan, eta_s=plan["seconds"] if plan else None)
+    job.save()
+    # Time left: what is left of this stage at this run's own speed, plus the estimate for later stages.
+    clock = {"stage": None, "t0": 0.0, "first": 0}
+    spent, made_now, yields = {}, {}, 0
+
+    def tick(stage, done, total):
+        now = time.time()
+        if clock["stage"] != stage:
+            clock.update(stage=stage, t0=now, first=done - 1 if total and done else done)
+            w.note(stage=stage)
+        worked = done - clock["first"]
+        made_now[stage], spent[stage] = worked, now - clock["t0"]
+        job.state["progress"][stage] = [done, total]
+        if plan:
+            order = ["diarize", "transcribe", "understand"]
+            later = sum(plan["stages"][k] for k in order[order.index(stage) + 1:]) if stage in order else 0
+            each = (now - clock["t0"]) / worked if worked > 0 and now - clock["t0"] > 1 else plan["stages"].get(stage, 0) / max(total, 1)
+            job.state["eta_s"] = round((total - done) * each + later)
+        job.save()
+    w.on_tick = tick
+
+    def begin(stage):
+        clock.update(stage=stage, t0=time.time(), first=(w.meta.get("progress") or {}).get(stage, [0, 0])[0])
+        w.note(stage=stage)
+
+    # 1 + 2. who spoke when comes first; the audio is then transcribed with each sentence given to its speaker
+    if is_audio:
+        job.step("diarize", "running", "preparing audio")
+        wav, own_wav = w.dir / "audio.16k.wav", True
+        if not wav.is_file():
+            tmp, made = models.prepare_wav(src)
+            if made:
+                shutil.move(str(tmp), str(wav))
+            else:
+                wav, own_wav = tmp, False
+        turns = []
+        try:
+            job.step("diarize", "running", "Sortformer")
+            begin("diarize")
+            turns = models.diarize("twinmind", wav, progress=lambda m: job.step("diarize", "running", m), work=w)
+            who = len({t["speaker"] for t in turns})
+            stages["diarize"] = f"{models.pick('diarization')['model']}, {who} speaker{'s' if who != 1 else ''}, {len(turns)} turns"
+            job.step("diarize", "done", stages["diarize"])
+        except work.Paused:
+            raise
+        except models.ModelUnavailable as e:
+            stages["diarize"] = f"skipped: {e}"
+            job.step("diarize", "skipped", str(e))
+        except Exception as e:  # diarization must never cost you the transcript
+            stages["diarize"] = f"failed, transcript kept without speakers: {e}"
+            job.step("diarize", "skipped", stages["diarize"][:160])
+            memory.log("twinmind", "error", {"msg": f"diarize: {e}"})
+        job.step("transcribe", "running", "whisper.cpp")
+        begin("transcribe")
+        say = lambda m: job.step("transcribe", "running", m)  # noqa: E731
+        heard = {}
+        segs = models.transcribe("twinmind", wav, wav_ready=True, progress=say, turns=turns or None, info=heard, work=w, speed=item["speed"])
+        stages["transcribe"] = (f"{heard.get('model')}, {len(segs)} lines, language heard: {heard.get('language')}"
+                                + (", translated into English by the model" if heard.get("translated") else "")
+                                + (f"; {heard['stepped_down_from']} could not be given the memory it needs here, so the smaller model was used"
+                                   if heard.get("stepped_down_from") else "")
+                                + ("; fast speed was chosen" if item["speed"] == "fast" else ""))
+        job.step("transcribe", "done", stages["transcribe"])
+        if secs and made_now.get("diarize") and "diarize" in spent:
+            total = job.state["progress"]["diarize"][1]
+            learn("diarize", spent["diarize"] / (secs / 60 * made_now["diarize"] / total))
+        if secs and made_now.get("transcribe") and " then " not in str(heard.get("model")):
+            total = job.state["progress"]["transcribe"][1]
+            learn("transcribe", spent["transcribe"] / (secs / 60 * made_now["transcribe"] / total), model=heard.get("model"))
+        # Speakers stay "Speaker 1", "Speaker 2" here: which voice is whose is not something the
+        # models know. The page asks you, with a line from each, once the memo is written.
+        lines = [f"[{stamp(s['start'])}] {s['speaker'] + ': ' if s.get('speaker') else ''}{s['text']}" for s in segs]
+    else:
+        own_wav = False
+        lines = [l for l in convert.to_markdown(src).splitlines() if l.strip()]
+        stages["transcribe"] = "skipped: input was already text"
+        stages["diarize"] = "skipped: no audio to listen to"
+        job.step("transcribe", "skipped", "input is text")
+        job.step("diarize", "skipped", "no audio")
+    transcript = "\n".join(lines)
+    if not transcript.strip():
+        raise ValueError("The transcript is empty.")
+
+    # 3. gist: quoted, no model
+    job.step("gist", "running")
+    spoken = [SPEAKER_LINE.match(l).group(2) if SPEAKER_LINE.match(l) else re.sub(r"^\[[\d:]+\]\s*", "", l) for l in lines]
+    quoted = gist.extract(spoken)
+    stages["gist"] = f"{len(quoted)} sentences quoted from the transcript, no model"
+    job.step("gist", "done", stages["gist"])
+
+    # 4. understand. The model is kept between sections while nobody else wants it, and let go
+    # between sections the moment another app is in line (a question in Ask Mitra, say).
+    notes, results = None, []
+
+    def write_notes(model=None, why=""):
+        nonlocal notes, results, flags, yields
+        results, a, name = [], None, model or models.pick("meeting-notes").get("model")
+        sections = meeting.chunk(lines)
+        begin("understand")
+        try:
+            for i, sec in enumerate(sections):
+                saved = w.load(f"notes-{i:04d}")
+                if saved is None or (model and saved.get("model") != model):
+                    w.check()
+                    if a:
+                        waiting = [t for t in models.someone_waiting() if t.get("app") != "twinmind"]
+                        if waiting:
+                            a.__exit__(None, None, None)
+                            a, yields = None, yields + 1
+                            memory.log("twinmind", "model.yield", {"to": waiting[0].get("app"), "section": i + 1, "of": len(sections)})
+                            job.step("understand", "running", f"section {i + 1} of {len(sections)}: stepped aside for {waiting[0].get('app')}, continues by itself")
+                    if a is None:
+                        a = models.Assistant("twinmind", capability="meeting-notes", model=model, what="notes and action items").__enter__()
+                        name = a.model
+                    job.step("understand", "running", f"{a.model}, section {i + 1} of {len(sections)}")
+                    saved = {**meeting.understand(a, sec, i), "model": a.model}
+                    w.save(f"notes-{i:04d}", saved)
+                results.append(saved)
+                w.tick("understand", i + 1, len(sections))
+        finally:
+            if a:
+                a.__exit__(None, None, None)
+        notes = meeting.merge(results)
+        flags = notes["flags"]
+        stages["understand"] = f"{name}, {len(sections)} sections, {len(flags)} items removed by the grounding check" + why
+        if made_now.get("understand"):
+            learn("notes", spent["understand"] / made_now["understand"])
+            if secs:
+                learn("sections_per_min", len(sections) / (secs / 60))
+
+    try:
+        job.step("understand", "running", "loading model")
+        try:
+            write_notes()
+        except models.MemoryDenied as e:
+            # The first-choice notes model sits close to the ceiling. If this device could not give
+            # it the memory, the next smaller one writes the notes and the memo says so.
+            first = models.pick("meeting-notes").get("model")
+            smaller = next((c["id"] for c in models.catalog()["meeting-notes"]["candidates"]
+                            if c["id"] != first and c.get("contract", "generic") == "generic" and models.find_model(c["id"])), None)
+            if not smaller:
+                raise
+            memory.log("twinmind", "model.fallback", {"from": first, "to": smaller, "why": str(e)[:200]})
+            write_notes(smaller, f"; {first} could not be given the memory it needs here, so the smaller model was used")
+        job.step("understand", "done", stages["understand"])
+    except (models.ModelUnavailable, models.MemoryDenied) as e:
+        notes, results, flags = None, [], []
+        stages["understand"] = f"skipped: {e}"
+        job.step("understand", "skipped", str(e))
+    if w.resumed or yields:
+        stages["job"] = ", ".join(x for x in ("picked up from saved pieces after a stop" if w.resumed else "",
+                                              f"stepped aside for another app {yields} time{'s' if yields != 1 else ''}" if yields else "") if x)
+
+    # 5. write
+    job.step("write", "running")

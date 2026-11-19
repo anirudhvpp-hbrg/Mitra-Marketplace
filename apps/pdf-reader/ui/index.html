@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitra PDF</title>
+<link rel="stylesheet" href="/static/mitra.css">
+<style>
+  main { display: flex; flex-direction: column; }
+  .tools { display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .tools .name { flex: 1 1 160px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  iframe { flex: 1; border: 0; min-height: 70vh; background: #fff; margin: 0 10px 10px; border-radius: 8px; box-shadow: 0 0 0 1px var(--line); }
+  #text { flex: 1; overflow: auto; }
+</style>
+</head>
+<body>
+<div class="split">
+  <aside id="files"></aside>
+  <main>
+    <div class="tools" hidden id="tools"><span class="name" id="name"></span>
+      <button id="mode">Text view</button><button id="tomd">Convert to Markdown</button><button id="newtab" title="Open in the browser's own PDF viewer, in a tab">Open in tab</button></div>
+    <div class="empty" id="empty">Pick a PDF on the left, or drop one anywhere in this window.</div>
+    <iframe id="frame" hidden title="PDF"></iframe>
+    <div id="text" hidden><article class="md" id="textbody"></article></div>
+  </main>
+</div>
+<script src="/static/sdk.js"></script>
+<script>
+const M = mitra, $ = (s) => document.querySelector(s);
+let path = null, textMode = false, textFor = null;
+// Phone browsers do not render PDFs inside a page, so they start in text view.
+const inlinePdf = navigator.pdfViewerEnabled !== false && !/Android|iPhone/i.test(navigator.userAgent);
+async function render() {
+  $('#frame').hidden = textMode; $('#text').hidden = !textMode;
+  $('#mode').textContent = textMode ? 'Page view' : 'Text view';
+  if (!textMode) { if ($('#frame').dataset.path !== path) { $('#frame').src = M.fileUrl(path); $('#frame').dataset.path = path; } return; }
+  if (textFor === path) return;
+  $('#textbody').textContent = 'Extracting text…';
+  try { const r = await M.api('/api/convert?path=' + encodeURIComponent(path)); $('#textbody').innerHTML = M.md(r.markdown); textFor = path; }
+  catch (e) { $('#textbody').textContent = e.message; }
+}
+function open(p, name) {
+  path = p; textMode = !inlinePdf; $('#empty').hidden = true; $('#tools').hidden = false;
+  $('#name').textContent = name || p.split(/[\\/]/).pop(); $('#name').title = name || p;
+  $('#mode').hidden = !inlinePdf; render(); M.log('action.read', { mode: textMode ? 'text' : 'page' });
+}
+$('#mode').onclick = () => { textMode = !textMode; render(); M.log('action.switch_view', { mode: textMode ? 'text' : 'page' }); };
+$('#tomd').onclick = () => { M.log('action.send_to_converter'); M.launch('to-markdown', { path }); };
+$('#newtab').onclick = () => window.open(M.fileUrl(path), '_blank');
+M.accept = { exts: ['.pdf'], open };
+M.ready.then(async () => {
+  const start = M.param('path'), dropped = M.param('name');
+  const fb = await M.browser($('#files'), { exts: ['.pdf'], onPick: open, start: start && !dropped ? start.replace(/[\\/][^\\/]*$/, '') : null });
+  if (start) { if (!dropped) fb.select(start); open(start, dropped); }
+});
+</script>
+</body>
+</html>

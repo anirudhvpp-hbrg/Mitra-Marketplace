@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitra</title>
+<link rel="icon" href="/static/brand/mitra-color.png">
+<link rel="stylesheet" href="/static/mitra.css">
+<style>
+  /* ---- the welcome screen: the first thing you see; nothing else is started behind it ---- */
+  .welcome { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; text-align: center; padding: 24px; isolation: isolate;
+    background: var(--bg); overflow: hidden; transition: opacity .5s var(--ease), transform .6s var(--ease), visibility 0s .6s; }
+  .welcome.gone { opacity: 0; transform: scale(1.04); visibility: hidden; pointer-events: none; }
+  .welcome::before { content: ""; position: absolute; inset: -20%; z-index: -1;
+    background: radial-gradient(34% 40% at 26% 34%, var(--glow-b), transparent 70%),
+                radial-gradient(30% 38% at 74% 28%, var(--glow-a), transparent 70%),
+                radial-gradient(40% 36% at 50% 80%, var(--glow-c), transparent 72%);
+    animation: drift 16s ease-in-out infinite alternate; }
+  @keyframes drift { to { transform: translate3d(2%, -3%, 0) scale(1.07); } }
+  .welcome .logo { height: 168px; display: block; margin: 0 auto 28px; animation: settle .9s var(--ease) both; }
+  @keyframes settle { from { transform: translateY(14px) scale(.94); opacity: 0; } }
+  .welcome h1 { font-size: 56px; line-height: 62px; letter-spacing: -.04em; animation: settle .9s .08s var(--ease) both; }
+  .welcome p { margin: 14px auto 0; color: var(--muted); max-width: min(46ch, 100%); font-size: 18px; line-height: 28px; animation: settle .9s .16s var(--ease) both; }
+  .welcome > div:first-child { max-width: 100%; min-width: 0; }
+  .welcome .enter { margin-top: 34px; min-height: 54px; padding: 14px 34px; border-radius: var(--r-full); font-size: 18px; display: inline-flex; align-items: center; gap: 10px;
+    animation: settle .9s .24s var(--ease) both; }
+  .welcome .enter svg { transition: transform .2s var(--ease); } .welcome .enter:hover svg { transform: translateX(4px); }
+  .welcome .foot { position: absolute; left: 0; right: 0; bottom: 22px; font-size: 13px; line-height: 20px; color: var(--muted); animation: settle .9s .4s var(--ease) both; }
+
+  /* ---- the apps: icons, not pages. An app exists as a process only after its icon is clicked ---- */
+  .hello { text-align: center; padding: 44px 20px 8px; }
+  .hello h1 { font-size: 40px; line-height: 46px; letter-spacing: -.035em; }
+  .hello p { margin: 10px auto 0; color: var(--muted); max-width: 60ch; }
+  .find { position: relative; max-width: 440px; margin: 24px auto 0; }
+  .find input { padding: 12px 70px 12px 44px; border-radius: var(--r-full); box-shadow: var(--elev-1); }
+  .find svg { position: absolute; left: 15px; top: 50%; translate: 0 -50%; color: var(--muted); }
+  .find span { position: absolute; right: 14px; top: 50%; translate: 0 -50%; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-width: 900px; margin: 30px auto 0; justify-items: center; }
+  .tile { position: relative; width: 100%; max-width: 176px; display: grid; justify-items: center; gap: 10px; padding: 20px 10px 16px; border: 1px solid transparent; background: none;
+    border-radius: var(--r-lg); min-height: 0; color: inherit; text-align: center; cursor: pointer;
+    animation: card-in .5s var(--ease) both; animation-delay: calc(var(--i, 0) * 55ms); transition: background .2s, border-color .2s, transform .2s var(--ease); }
+  @keyframes card-in { from { transform: translateY(16px) scale(.96); opacity: 0; } }
+  .tile:hover, .tile:focus-visible, .tile.sel { background: var(--panel); border-color: var(--line); box-shadow: var(--elev-1); }
+  .tile:hover .glyph { transform: translateY(-4px) scale(1.05); box-shadow: inset 0 0 0 1px var(--glyph-ring), var(--elev-2); }
+  .tile:active .glyph { transform: scale(.94); }
+  .tile .glyph { width: 84px; height: 84px; border-radius: 24px; transition: transform .22s var(--ease), box-shadow .22s; }
+  .tile b { font: 600 15px/20px var(--sans); }
+  .tile small { font-size: 12px; line-height: 16px; color: var(--muted); min-height: 16px; }
+  .tile .live { position: absolute; top: 14px; right: calc(50% - 50px); width: 13px; height: 13px; border-radius: 50%; background: var(--ok); border: 2.5px solid var(--bg); display: none; }
+  .tile.running .live { display: block; animation: pulse 1.8s infinite; }
+  .tile.starting .glyph { animation: breathe .8s ease-in-out infinite alternate; }
+  @keyframes breathe { to { transform: scale(1.08); filter: brightness(1.08); } }
+  .tile .rm { position: absolute; top: 6px; left: 8px; width: 26px; height: 26px; min-height: 0; padding: 0; border-radius: 50%; font-size: 15px; line-height: 1; opacity: 0; color: var(--muted); }
+  .tile:hover .rm, .tile .rm:focus-visible { opacity: 1; }
+
+  .about { max-width: 900px; margin: 22px auto 0; display: flex; gap: 16px; align-items: center; padding: 16px 20px; min-height: 86px; }
+  .about .txt { flex: 1; min-width: 0; } .about h3 { margin: 0 0 2px; font-size: 18px; line-height: 26px; }
+  .about p { margin: 0; color: var(--muted); font-size: 14px; line-height: 20px; }
+  .about .state { font-size: 13px; line-height: 18px; color: var(--muted); margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+
+  .cat { display: flex; align-items: center; gap: 12px; max-width: 900px; margin: 34px auto 12px; font: 600 12px/16px var(--sans); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .cat::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .recent { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; padding: 4px 2px 10px; max-width: 900px; margin: 0 auto; }
+  .recent a { min-width: 0; display: flex; align-items: center; gap: 10px; padding: 9px 14px 9px 9px; border: 1px solid var(--line); border-radius: var(--r-full);
+    background: var(--panel); color: inherit; font-size: 14px; line-height: 20px; transition: border-color .15s, transform .15s var(--ease); }
+  .recent a > span { min-width: 0; }
+  .recent a:hover { text-decoration: none; border-color: var(--action); transform: translateY(-2px); }
+  .recent .glyph { width: 28px; height: 28px; border-radius: 9px; }
+  .recent b { font-weight: 600; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .page-head { margin: 8px 0 22px; } .page-head p { margin: 6px 0 0; color: var(--muted); max-width: 70ch; }
+  .ring { position: relative; width: 148px; height: 148px; flex: none; }
+  .ring svg { transform: rotate(-90deg); } .ring circle { fill: none; stroke-width: 10; stroke-linecap: round; }
+  .ring .track { stroke: var(--chip); } .ring .val { stroke: var(--sky-500); transition: stroke-dashoffset .8s var(--ease), stroke .4s; }
+  .ring.soft .val { stroke: var(--amber-400); } .ring.hard .val { stroke: var(--bad); }
+  .ring div { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .ring b { font: 600 34px/38px var(--serif); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .ring small { color: var(--muted); font-size: 12px; line-height: 16px; }
+  .spark { display: flex; align-items: flex-end; justify-content: flex-end; gap: 3px; height: 70px; border-bottom: 1px solid var(--line); }
+  .spark i { flex: 0 1 8px; background: linear-gradient(var(--sky-500), var(--navy-600)); opacity: .8; min-height: 2px; border-radius: 2px 2px 0 0; }
+  .stat { display: grid; gap: 2px; } .stat b { font: 600 24px/32px var(--serif); font-variant-numeric: tabular-nums; } .stat span { font-size: 12px; line-height: 16px; color: var(--muted); }
+  section[hidden] { display: none; }
+  #procs, #leases, #line, #caps, #limits { overflow-x: auto; }   /* a wide table scrolls inside its card on a phone, not the page */
+  section { animation: page-in .28s var(--ease); }
+  @keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
+  @media (max-width: 620px) {
+    .bar .ram { display: none; }   /* on a phone the System tab carries RAM; the bar stays one row */
+    .bar { gap: 8px; flex-wrap: nowrap; } .bar nav { min-width: 0; overflow-x: auto; scrollbar-width: none; } .bar .spacer { display: none; } #theme { margin-left: auto; padding: 0; min-width: 44px; } .bar nav button { padding: 5px 9px; font-size: 13px; } .bar a.logo-link { padding: 4px 6px; margin-left: -6px; } .bar .logo { height: 30px; }
+    .welcome h1 { font-size: 38px; line-height: 44px; } .welcome .logo { height: 120px; } .welcome p { font-size: 16px; line-height: 24px; }
+    .hello h1 { font-size: 30px; line-height: 36px; } .hello { padding-top: 28px; } .hidem { display: none; }
+    .tiles { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); } .tile .glyph { width: 68px; height: 68px; border-radius: 20px; }
+    .about { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+<div class="welcome" id="welcome" role="dialog" aria-label="Welcome to Mitra">
+  <div>
+    <span class="logo" role="img" aria-label="Mitra"></span>
+    <h1 id="greet">Welcome</h1>
+    <p>Your apps, on this device. Each one starts only when you open it, and is gone when you close it.</p>
+    <button class="primary enter" id="enter">Enter <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+  </div>
+  <div class="foot" id="foot">Nothing is running yet.</div>
+</div>
+
+<header class="bar">
+  <a class="logo-link" href="/" aria-label="Mitra, all apps"><span class="logo" role="img" aria-label="Mitra"></span></a>
+  <nav id="nav" aria-label="Sections">
+    <button data-v="apps">Apps</button><button data-v="create">Create</button>
+    <button data-v="memory">Memory</button><button data-v="system">System</button>
+  </nav>
+  <span class="spacer"></span>
+  <button class="ghost hidem" id="pal" title="Go to an app or action">Go to <kbd>Ctrl</kbd> <kbd>K</kbd></button>
+  <button class="ghost" id="theme" aria-label="Switch between light and dark"></button>
+</header>
+
+<section id="apps">
+  <div class="hello">
+    <h1>Your apps</h1>
+    <p id="status">Click an icon to start that app. Each one is its own program, in its own window.</p>
+    <div class="find">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>
+      <input id="search" placeholder="Find an app" aria-label="Find an app" autocomplete="off">
+      <span class="hidem"><kbd>/</kbd></span>
+    </div>
+  </div>
+  <div class="wrap" style="padding-top:0">
+    <div class="card" id="busy" hidden style="padding:12px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-color:var(--action)"></div>
+    <div class="tiles" id="applist"><div class="skeleton" style="width:150px;height:150px"></div><div class="skeleton" style="width:150px;height:150px"></div><div class="skeleton" style="width:150px;height:150px"></div></div>
+    <div class="card about" id="about" aria-live="polite"></div>
+    <div id="recentbox" hidden><div class="cat">Pick up where you left off</div><div class="recent" id="recent"></div></div>
+  </div>
+</section>
+
+<div class="wrap">
+  <section id="create" hidden>
+    <div class="page-head"><h1>Create an app</h1><p>Describe it in your own words. Mention where its files live (Dropbox, a folder), what it should do, and the output you want. You review the draft before anything is created. The new app gets its own icon and runs as its own program, like the others.</p></div>
+    <div class="card" style="padding:22px">
+      <label for="prompt">Description</label>
+      <textarea id="prompt" rows="5" style="font-family:var(--sans);font-size:16px;line-height:24px" placeholder="A meeting app called Standup Notes. It connects to Dropbox folder Meetings/Standups, transcribes audio, and writes a summary with action items."></textarea>
+      <div class="row" id="ideas" style="margin-top:10px;gap:6px"><span class="muted small">Start from:</span>
+        <button class="chip plain" type="button" style="min-height:32px;border:1px solid var(--line);cursor:pointer" data-idea="A reading app called Research Shelf. It opens PDFs and Word files from my Dropbox folder Research, and answers questions about the file I pick.">Ask about my files</button>
+        <button class="chip plain" type="button" style="min-height:32px;border:1px solid var(--line);cursor:pointer" data-idea="A meeting app called Standup Notes. It connects to Dropbox folder Meetings/Standups, transcribes audio, and writes a summary with action items.">Meeting notes</button>
+        <button class="chip plain" type="button" style="min-height:32px;border:1px solid var(--line);cursor:pointer" data-idea="A converter called Board Pack. It reads PowerPoint and Excel files from a local folder and saves each one as Markdown beside it. No model.">Convert a folder</button></div>
+      <div class="row" style="margin-top:14px"><button class="primary" id="draft">Draft it</button><span class="muted small">A model is added only when the description calls for one.</span></div>
+      <div id="draftbox" hidden>
+        <label for="manifest">Draft (you can edit it)</label>
+        <textarea id="manifest" rows="18" spellcheck="false"></textarea>
+        <div class="row" style="margin-top:14px"><button class="primary" id="make">Create app</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="memory" hidden>
+    <div class="page-head"><h1>Memory</h1><p>Every app start and stop, open, action, file, model run and governor stop is logged on this device, from every app into one log. Review a period, then prune what is old.</p></div>
+    <div class="row" style="margin-bottom:16px">
+      <nav class="bar-like" id="period" style="display:flex;gap:2px;background:var(--chip);padding:3px;border-radius:999px">
+        <button class="ghost" data-d="7">Week</button><button class="ghost" data-d="14">Two weeks</button><button class="ghost" data-d="30">Month</button></nav>
+      <button id="savereport">Save report</button>
+      <span style="flex:1"></span>
+      <button id="prune">Prune logs older than 90 days</button>
+    </div>
+    <div class="card"><div class="md" id="report" style="padding:8px 6px;max-width:none"></div></div>
+  </section>
+
+  <section id="system" hidden>
+    <div class="page-head"><h1>System</h1><p>Each app is its own small process. One governor, shared by all of them, decides what model may load and stops whatever goes past its limit, so only one model is ever in memory.</p></div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));align-items:start">
+      <div class="card row" style="gap:20px;padding:22px;flex-wrap:nowrap">
+        <div class="ring" id="ring"><svg viewBox="0 0 120 120" width="148" height="148"><circle class="track" cx="60" cy="60" r="52"/><circle class="val" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7"/></svg><div><b id="ramPct">–</b><small>RAM in use</small></div></div>
+        <div style="flex:1;min-width:0"><div class="small" id="ramAbs"></div></div>
+      </div>
+      <div class="card" style="padding:22px"><div class="muted small" style="margin-bottom:10px">This device's RAM, last few minutes <span style="float:right">0 to 100%</span></div><div class="spark" id="spark"></div>
+        <div class="row" style="margin-top:16px;gap:24px"><div class="stat"><b id="gwMb">–</b><span>launcher, MB</span></div><div class="stat"><b id="apN">0</b><span>apps running</span></div><div class="stat"><b id="mdN">0</b><span>models loaded</span></div></div></div>
+      <div class="card" style="padding:22px"><div class="muted small" style="margin-bottom:6px">Limits on this device</div><div id="limits" class="small"></div></div>
+    </div>
+    <h3>Apps running now</h3>
+    <div class="card" id="procs"></div>
+    <h3>Model running now</h3>
+    <div class="card" id="leases"></div>
+    <h3>Waiting for the model</h3>
+    <div class="card" id="line"></div>
+    <h3>Capabilities on this device</h3>
+    <div class="card" id="caps"><div class="skeleton" style="height:120px"></div></div>
+  </section>
+</div>
+
+<script src="/static/sdk.js"></script>
+<script>
+const M = mitra, $ = (s) => document.querySelector(s);
+M.ramPill($('.bar'));
+let APPS = [], RUNNING = {}, STARTING = {}, selected = null, days = 7;
+
+// ---- welcome ----
+const hour = new Date().getHours();
+$('#greet').textContent = hour < 5 ? 'Working late' : hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+function enter() {
+  $('#welcome').classList.add('gone');
+  try { sessionStorage.setItem('mitra.entered', '1'); } catch {}
+  M.log('action.enter', {});
+  setTimeout(() => document.querySelector('.tile')?.focus({ preventScroll: true }), 350);
+}
+$('#enter').onclick = enter;
+let entered = false; try { entered = sessionStorage.getItem('mitra.entered') === '1'; } catch {}
+if (entered || location.hash.length > 1) $('#welcome').classList.add('gone'); else $('#enter').focus();
+
+const themeBtn = () => ($('#theme').innerHTML = M.icon(M.isDark() ? 'sun' : 'moon'));
+themeBtn(); $('#theme').onclick = () => { M.toggleTheme(); themeBtn(); }; addEventListener('mitra-theme', themeBtn);
+$('#pal').onclick = M.palette;
+
+function show(v) {
+  if (!document.getElementById(v) || v === 'welcome') v = 'apps';
+  document.querySelectorAll('section').forEach((s) => (s.hidden = s.id !== v));
+  document.querySelectorAll('#nav button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+  history.replaceState(null, '', v === 'apps' ? '/' : '#' + v);
+  ({ apps: loadApps, memory: loadReport, system: () => { loadSystem(); loadCaps(); }, create: () => $('#prompt').focus() })[v]();
+  scrollTo({ top: 0 });
+}
+$('#nav').onclick = (e) => e.target.dataset.v && show(e.target.dataset.v);
+document.querySelector('.logo-link').onclick = (e) => { e.preventDefault(); show('apps'); };
+
+// ---- apps: icons. Nothing of an app runs until its icon is clicked ----
+const models = (a) => !a.needs.length ? 'no model' : a.needs.length === 1 ? 'one model, on demand' : `${a.needs.length} models, one at a time`;
+const sub = (a) => a.tagline || models(a);   // under the icon: what the app is for; the models are in the card below
+async function loadApps() {
+  APPS = await M.api('/api/apps'); await loadRunning(); drawApps();
+  M.api('/api/recent/all').then((r) => {
+    $('#recentbox').hidden = !r.length;
+    $('#recent').innerHTML = r.map((f) => `<a href="/apps/${f.app}/?path=${encodeURIComponent(f.path)}" title="${M.esc(f.path)}">${M.glyph(f.glyph)}<span><b>${M.esc(f.name)}</b><span class="muted" style="font-size:12px">${M.esc(f.app_name)}</span></span></a>`).join('');
+  }).catch(() => {});
+}
+async function loadRunning() {
+  try { const list = await (await fetch('/api/running')).json(); RUNNING = Object.fromEntries(list.map((r) => [r.id, r])); } catch { RUNNING = {}; }
+  const n = Object.keys(RUNNING).length;
+  $('#foot').textContent = n ? `${n} app${n > 1 ? 's are' : ' is'} running.` : 'Nothing is running yet.';
+  $('#status').textContent = n ? `${n} of ${APPS.length} apps running. The rest take no memory at all.` : 'Click an icon to start that app, or drop a file here to open it. Each app is its own program, in its own window.';
+  document.querySelectorAll('.tile').forEach((t) => {
+    const on = !!RUNNING[t.dataset.id];
+    t.classList.toggle('running', on); if (on) { delete STARTING[t.dataset.id]; t.classList.remove('starting'); }
+    t.querySelector('small').textContent = STARTING[t.dataset.id] ? 'starting…' : on ? `running · ${RUNNING[t.dataset.id].mb} MB` : t.dataset.models;
+  });
+  if (selected) about(selected); else idle();
+}
+function drawApps() {
+  const q = $('#search').value.toLowerCase().trim();
+  const list = APPS.filter((a) => (a.name + ' ' + (a.tagline || '') + ' ' + a.description + ' ' + a.category).toLowerCase().includes(q));
+  $('#applist').innerHTML = list.map((a, i) => `
+    <div class="tile${RUNNING[a.id] ? ' running' : ''}" role="button" tabindex="0" data-id="${a.id}" data-models="${M.esc(sub(a))}" style="--i:${i}" aria-label="Open ${M.esc(a.name)}">
+      <i class="live" title="Running"></i>${a.builtin ? '' : `<button class="rm ghost" data-rm="${a.id}" title="Remove ${M.esc(a.name)}" aria-label="Remove ${M.esc(a.name)}">×</button>`}
+      ${M.glyph(M.glyphFor(a))}<b>${M.esc(a.name)}</b><small>${RUNNING[a.id] ? `running · ${RUNNING[a.id].mb} MB` : M.esc(sub(a))}</small>
+    </div>`).join('')
+    || `<div class="empty" style="grid-column:1/-1">${M.glyph('search')}<div>No app matches "${M.esc(q)}".</div><button class="primary" style="margin-top:16px" onclick="show('create')">Create one</button></div>`;
+  if (!list.find((a) => a.id === selected)) { selected = null; idle(); }
+}
+// The card under the icons is never an empty box: with no icon pointed at, it says what is on this device.
+function idle() {
+  if (selected) return;
+  const n = Object.keys(RUNNING).length;
+  $('#about').innerHTML = `${M.glyph('app')}<div class="txt"><h3>${APPS.length} apps on this device</h3><p>Point at an icon to see what it does and what it needs. Drop a file anywhere here and the app that reads it opens.</p>
+    <div class="state"><span class="chip ${n ? 'ok' : 'plain'}">${n ? `${n} running` : 'none running'}</span><span>${n ? 'The rest take no memory at all.' : 'Nothing of Mitra is in memory apart from this launcher.'}</span></div></div>`;
+}
+function about(id) {
+  const a = APPS.find((x) => x.id === id); if (!a) return;
+  selected = id; const r = RUNNING[id];
+  document.querySelectorAll('.tile').forEach((t) => t.classList.toggle('sel', t.dataset.id === id));
+  $('#about').hidden = false;
+  $('#about').innerHTML = `${M.glyph(M.glyphFor(a))}<div class="txt"><h3>${M.esc(a.name)}</h3><p>${M.esc(a.description || '')}</p>
+    <div class="state">${a.needs.map((n) => `<span class="chip ${n.ready ? 'ok' : 'warn'}" title="${M.esc(n.ready ? n.model + ', about ' + n.est_mb + ' MB while it runs' : n.hint)}">${M.esc(n.capability)}</span>`).join('')}
+      ${a.needs.length ? '' : '<span class="chip plain">no model</span>'}${a.connectors.map((c) => `<span class="chip ${c.available ? 'ok' : 'warn'}">${M.esc(c.type)}</span>`).join('')}
+      <span>${r ? `Running as its own process (pid ${r.pid}) on port ${r.port}, holding ${r.mb} MB.` : 'Not running. Nothing of this app is in memory.'}</span></div></div>
+    ${r ? `<button data-close="${a.id}">Close</button>` : ''}<button class="primary" data-open="${a.id}">${r ? 'Show' : 'Open'}</button>`;
+}
+async function openApp(id) {
+  const tile = document.querySelector(`.tile[data-id="${id}"]`);
+  if (!RUNNING[id]) { STARTING[id] = 1; tile?.classList.add('starting'); if (tile) tile.querySelector('small').textContent = 'starting…'; }
+  const r = await M.launch(id);
+  delete STARTING[id]; tile?.classList.remove('starting');
+  if (r && r.started) M.toast(`${APPS.find((a) => a.id === id)?.name || id} started in ${(r.ms / 1000).toFixed(1)} s`, 2200);
+  loadRunning();
+}
+$('#applist').addEventListener('click', async (e) => {
+  const rm = e.target.closest('[data-rm]');
+  if (rm) {
+    e.stopPropagation(); const a = APPS.find((x) => x.id === rm.dataset.rm);
+    if (!confirm(`Remove ${a.name}? Its folder is moved to ~/.mitra/removed-apps, not deleted.`)) return;
+    try { await M.api('/api/stop/' + a.id, { method: 'POST' }); await M.api('/api/apps/' + a.id, { method: 'DELETE' }); M.toast(a.name + ' removed.'); } catch (err) { M.toast(err.message); }
+    return loadApps();
+  }
+  const t = e.target.closest('.tile'); if (t) { about(t.dataset.id); openApp(t.dataset.id); }
+});
+$('#applist').addEventListener('pointerover', (e) => { const t = e.target.closest('.tile'); if (t) about(t.dataset.id); });
+$('#applist').addEventListener('focusin', (e) => { const t = e.target.closest('.tile'); if (t) about(t.dataset.id); });
+$('#applist').addEventListener('keydown', (e) => {       // Enter opens; arrow keys walk the icons
+  const tiles = [...document.querySelectorAll('.tile')], at = tiles.indexOf(document.activeElement);
+  if (at < 0) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openApp(tiles[at].dataset.id); }
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (step) { tiles[(at + step + tiles.length) % tiles.length].focus(); e.preventDefault(); }
+});
+$('#about').onclick = async (e) => {
+  if (e.target.dataset.open) openApp(e.target.dataset.open);
+  if (e.target.dataset.close) { await M.api('/api/stop/' + e.target.dataset.close, { method: 'POST' }); M.log('action.close_app', { id: e.target.dataset.close }); loadRunning(); }
+};
+$('#search').oninput = drawApps;
+$('#search').onkeydown = (e) => { if (e.key === 'Enter') document.querySelector('.tile')?.click(); if (e.key === 'ArrowDown') { document.querySelector('.tile')?.focus(); e.preventDefault(); } };
+addEventListener('keydown', (e) => {
+  if (!$('#welcome').classList.contains('gone')) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); enter(); } return; }
+  if (e.key === '/' && !/INPUT|TEXTAREA/.test(document.activeElement.tagName)) { e.preventDefault(); show('apps'); $('#search').focus(); }
+});
+addEventListener('mitra-launch', loadRunning);
+addEventListener('mitra-drop', loadRunning);   // a file dropped on this window or on an icon started an app
+setInterval(() => { if (!document.hidden) { loadRunning(); if (!$('#system').hidden) loadSystem(); } }, 3000);
+
+// ---- create ----
+$('#ideas').onclick = (e) => { const b = e.target.closest('[data-idea]'); if (b) { $('#prompt').value = b.dataset.idea; $('#prompt').focus(); } };
+$('#draft').onclick = async () => {
+  const prompt = $('#prompt').value.trim(); if (!prompt) return M.toast('Describe the app first.');
+  $('#draft').disabled = true;
+  try { $('#manifest').value = JSON.stringify(await M.api('/api/builder/draft', { body: { prompt } }), null, 2); $('#draftbox').hidden = false; } catch (e) { M.toast(e.message); }
+  $('#draft').disabled = false;
+};
+$('#make').onclick = async () => {
+  let manifest; try { manifest = JSON.parse($('#manifest').value); } catch (e) { return M.toast('The draft is not valid JSON: ' + e.message); }
+  try { const a = await M.api('/api/builder/create', { body: { manifest } }); M.toast(a.name + ' created. Its icon is with your apps.'); $('#draftbox').hidden = true; $('#prompt').value = ''; show('apps'); }
+  catch (e) { M.toast(e.message); }
+};
+
+// ---- memory ----
+async function loadReport(save) {
+  document.querySelectorAll('#period button').forEach((b) => { const on = +b.dataset.d === days; b.style.background = on ? 'var(--panel)' : ''; b.style.fontWeight = on ? 650 : ''; });
+  const r = await M.api(`/api/memory/report?days=${days}${save ? '&save=1' : ''}`);
+  $('#report').innerHTML = M.md(r.markdown);
+  if (r.saved) M.toast('Saved to ' + r.saved, 6000);
+}
+$('#period').onclick = (e) => { if (e.target.dataset.d) { days = +e.target.dataset.d; loadReport(); } };
+$('#savereport').onclick = () => loadReport(true);
+$('#prune').onclick = async () => {
+  if (!confirm('Roll up and archive raw logs older than 90 days? Daily counts are kept; raw lines move to a compressed archive.')) return;
+  const r = await M.api('/api/memory/prune', { body: { keep_days: 90 } });
+  M.toast(`${r.days_rolled} day(s) rolled up and archived.`); loadReport();
+};
+
+// ---- system ----
+async function loadSystem() {
+  if ($('#system').hidden || document.hidden) return;
+  const s = await M.api('/api/system');
+  $('#ring').className = 'ring ' + s.state;
+  $('#ring .val').style.strokeDashoffset = 326.7 * (1 - s.ram.pct / 100);
+  $('#ramPct').textContent = Math.round(s.ram.pct) + '%';
+  $('#ramAbs').innerHTML = `<b>${(s.ram.used_mb / 1024).toFixed(1)} of ${(s.ram.total_mb / 1024).toFixed(1)} GB</b> is in use by everything on this device.<br><span class="muted">${(s.ram.free_mb / 1024).toFixed(1)} GB free. Mitra's own share is the launcher, apps and models counted beside this.</span>`;
+  $('#spark').innerHTML = s.history.map((p) => `<i style="height:${p}%"></i>`).join('');
+  const procs = Object.values(RUNNING);
+  $('#gwMb').textContent = s.gateway_mb ?? '–'; $('#apN').textContent = procs.length; $('#mdN').textContent = s.leases.length;
+  const L = s.limits;
+  $('#limits').innerHTML = `<table class="plain"><tr><td>Any model</td><td><b>${L.model_budget_mb} MB</b> at most, and its own measured need plus 10%</td></tr>
+    <tr><td>At once</td><td><b>${L.max_models}</b> model across every app, stopped when its job ends</td></tr><tr><td>Kept free</td><td><b>${L.reserve_mb} MB</b></td></tr>
+    <tr><td>CPU</td><td><b>${L.threads}</b> threads, below normal priority</td></tr><tr><td>An app</td><td>ends a few seconds after its window closes</td></tr>
+    <tr><td>Launcher</td><td>ends when its window closes${s.idle_exit_min > 0 ? `, or after <b>${s.idle_exit_min} min</b> unused` : '; it never ends on its own'}</td></tr></table>`;
+  $('#procs').innerHTML = procs.length ? `<table class="plain"><tr><th>App</th><th>Process</th><th>Address</th><th>RAM</th><th>Since</th><th></th></tr>${procs.map((p) => `
+    <tr><td><b>${M.esc((APPS.find((a) => a.id === p.id) || {}).name || p.id)}</b></td><td>pid ${p.pid}</td><td class="mono">127.0.0.1:${p.port}</td><td>${p.mb} MB</td><td>${M.esc(p.started.slice(11, 16))}</td>
+    <td><button data-close="${M.esc(p.id)}">Close</button></td></tr>`).join('')}</table>` : '<div class="muted">No app is running. Apart from this launcher, nothing of Mitra is in memory.</div>';
+  $('#leases').innerHTML = s.leases.length ? `<table class="plain"><tr><th>Model</th><th>RAM now</th><th>Cap</th><th>Used by</th><th>Doing</th><th></th></tr>${s.leases.map((l) => `
+    <tr><td><b>${M.esc(l.name)}</b></td><td>${l.mb} MB</td><td>${l.budget_mb} MB</td><td>${M.esc(l.apps.map(appName).join(', '))}</td><td>${M.esc(l.what || '')}</td>
+    <td><button data-evict="${M.esc(l.key)}">Stop</button></td></tr>`).join('')}</table>` : '<div class="muted">No model is running. Nothing of Mitra\'s model stack is in memory.</div>';
+  const line = s.line || [];
+  $('#line').innerHTML = line.length ? `<table class="plain"><tr><th>#</th><th>App</th><th>What</th><th>Waited</th><th>Goes</th></tr>${line.map((t, i) => `
+    <tr><td>${i + 1}</td><td><b>${M.esc(appName(t.app))}</b></td><td>${M.esc(t.what || t.name)}</td><td>${dur(t.waited_s)}</td>
+    <td>${t.priority === 'interactive' ? 'next, ahead of long jobs' : 'in turn'}</td></tr>`).join('')}</table>`
+    : '<div class="muted">Nobody is waiting. One model runs at a time; a question goes ahead of a long job at its next piece, and nothing in the line times out.</div>';
+}
+const appName = (id) => (APPS.find((a) => a.id === id) || {}).name || id;
+const dur = (sec) => sec < 90 ? `${Math.round(sec)} s` : `${Math.round(sec / 60)} min`;
+// While a model works, Your apps says who has it, what for, and who is waiting.
+async function loadBusy() {
+  if (document.hidden || $('#apps').hidden) return;
+  let s; try { s = await M.api('/api/system'); } catch { return; }
+  const l = (s.leases || [])[0], line = s.line || [];
+  $('#busy').hidden = !l && !line.length;
+  if (!l && !line.length) return;
+  const who = l ? `<b>${M.esc(appName(l.apps[0]))}</b> · ${M.esc(l.what || l.name)} · ${M.esc(l.name)}, ${l.mb} MB` : 'The model is changing hands';
+  const next = line.length ? `${line.length} waiting · ${M.esc(appName(line[0].app))} goes next` : 'nobody waiting';
+  $('#busy').innerHTML = `<span class="chip ok">working</span><span style="flex:1;min-width:200px">${who}</span><span class="muted small">${next}</span>
+    <button class="ghost" data-show="${M.esc(l ? l.apps[0] : line[0].app)}">Show</button>`;
+}
+$('#busy').onclick = (e) => { if (e.target.dataset.show) M.launch(e.target.dataset.show); };
+setInterval(loadBusy, 4000); loadBusy();
+async function loadCaps() {
+  const [r, apps] = await Promise.all([M.api('/api/models'), APPS.length ? APPS : M.api('/api/apps')]);
+  // which apps use each capability: one that no app uses is listed last and quietly, not as a warning
+  const users = (cap) => apps.filter((a) => a.needs.some((n) => n.capability === cap)).map((a) => a.name);
+  const caps = [...r.capabilities].sort((a, b) => !users(a.capability).length - !users(b.capability).length);
+  // the measured detail behind a choice is kept, one click away; the first sentence says it
+  const why = (w) => { const m = String(w || '').match(/^(.+?\.)\s+(.+)$/s); return m ? `${M.esc(m[1])} <details style="display:inline"><summary class="muted" style="display:inline;cursor:pointer">more</summary>${M.esc(m[2])}</details>` : M.esc(w || ''); };
+  $('#caps').innerHTML = `<p class="small muted" style="margin-top:0">Models are read from the package first, then from <span class="mono">${M.esc(r.models_dir)}</span>. Fine-tuned models go to <span class="mono">${M.esc(r.finetuned_dir)}</span>.</p>
+    <table class="plain"><tr><th>Capability</th><th>Chosen model</th><th>RAM while running</th><th>Status</th></tr>${caps.map((c) => { const u = users(c.capability); return `
+    <tr${u.length ? '' : ' class="muted"'}><td><b>${M.esc(c.capability)}</b><div class="small muted">${M.esc(c.purpose || '')}</div><div class="small muted">${u.length ? 'Used by ' + M.esc(u.join(', ')) : 'No app uses this yet'}</div></td>
+    <td>${M.esc(c.model || '–')}<div class="small muted">${why(c.why)}</div></td><td>${c.est_mb ? c.est_mb + ' MB' : '–'}</td>
+    <td><span class="chip ${c.ready ? 'ok' : u.length ? 'warn' : 'plain'}">${c.ready ? 'ready' : u.length ? 'not ready' : 'not set up'}</span><div class="small muted">${M.esc(c.ready ? c.runtime : c.hint || '')}</div></td></tr>`; }).join('')}</table>`;
+}
+$('#leases').onclick = async (e) => { if (e.target.dataset.evict) { await M.api('/api/system/evict', { body: { key: e.target.dataset.evict } }); loadSystem(); } };
+$('#procs').onclick = async (e) => { if (e.target.dataset.close) { await M.api('/api/stop/' + e.target.dataset.close, { method: 'POST' }); await loadRunning(); loadSystem(); } };
+
+show(location.hash.slice(1) || 'apps');
+addEventListener('hashchange', () => show(location.hash.slice(1) || 'apps'));
+</script>
+</body>
+</html>

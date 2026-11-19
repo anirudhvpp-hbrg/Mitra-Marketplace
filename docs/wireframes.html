@@ -1,0 +1,580 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mitra wireframes</title>
+<style>
+:root{
+  --navy-900:#06193a; --saffron-500:#f26b21; --saffron-600:#d9520f;
+  --bg:#fbf9f5; --panel:#ffffff; --sunken:#f4f0e8; --ink:#06193a; --muted:#5a6480; --line:#e9e3d7;
+  --wire:#9aa3b8; --bar:#dcd6c8; --live:#d9520f; --live-soft:rgba(242,107,33,.10); --ok:#1f7a4d; --bad:#b42318;
+  --logo:url(../web/static/brand/mitra-color.png);
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --sans:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  --mono:ui-monospace,"Cascadia Code",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#030f24; --panel:#0a1d40; --sunken:#0f2750; --ink:#eef2f9; --muted:#9fadc8; --line:#17305c;
+  --wire:#4a628f; --bar:#22407a; --live:#f9813c; --live-soft:rgba(242,107,33,.18); --ok:#5fd09a; --bad:#ff8a80;
+  --logo:url(../web/static/brand/mitra-tint.png); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#030f24; --panel:#0a1d40; --sunken:#0f2750; --ink:#eef2f9; --muted:#9fadc8; --line:#17305c;
+  --wire:#4a628f; --bar:#22407a; --live:#f9813c; --live-soft:rgba(242,107,33,.18); --ok:#5fd09a; --bad:#ff8a80;
+  --logo:url(../web/static/brand/mitra-tint.png); color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--live);outline-offset:2px}
+
+/* page shell */
+.top{position:sticky;top:0;z-index:20;display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .logo{width:26px;height:26px;background:var(--logo) center/contain no-repeat}
+.top h1{font:600 17px var(--serif);margin:0}
+.top small{color:var(--muted);font:11.5px var(--mono)}
+.sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--wire);border-radius:7px;overflow:hidden}
+.seg button{padding:5px 10px;font-size:12px;min-height:30px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.shell{display:grid;grid-template-columns:216px minmax(0,1fr) 320px;gap:0;min-height:calc(100vh - 52px)}
+.side{border-right:1px solid var(--line);padding:12px 8px;position:sticky;top:52px;align-self:start;max-height:calc(100vh - 52px);overflow:auto}
+.side h4{margin:14px 8px 4px;font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.side button{display:flex;justify-content:space-between;gap:6px;width:100%;text-align:left;padding:6px 8px;border-radius:6px;font-size:13px}
+.side button:hover{background:var(--sunken)}
+.side button[aria-current="true"]{background:var(--ink);color:var(--panel)}
+.side button em{font:normal 10px var(--mono);color:var(--live)}
+.side button[aria-current="true"] em{color:inherit;opacity:.8}
+.main{padding:18px 20px 60px;min-width:0}
+.head h2{font:600 24px/1.2 var(--serif);margin:0 0 2px;text-wrap:balance}
+.head p{margin:0;color:var(--muted);max-width:70ch}
+.head .via{font:11.5px var(--mono);margin-top:6px}
+.states{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+.states button{border:1px solid var(--wire);border-radius:99px;padding:4px 12px;font-size:12.5px;min-height:30px}
+.states button[aria-pressed="true"]{background:var(--ink);color:var(--panel);border-color:var(--ink)}
+.states button.isnew{border-color:var(--live);border-style:dashed}
+.notes{border-left:1px solid var(--line);padding:18px 16px 60px;position:sticky;top:52px;align-self:start;max-height:calc(100vh - 52px);overflow:auto}
+.notes h3{font:600 10.5px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.notes ol{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.notes li{display:grid;grid-template-columns:22px 1fr;gap:8px;padding:8px;border-radius:8px;border:1px solid transparent}
+.notes li:hover,.notes li.hot{border-color:var(--live);background:var(--live-soft)}
+.notes li>b{width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--panel);font:700 10.5px/20px var(--mono);text-align:center}
+.notes li strong{font-size:13px}
+.notes li p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+.tag{display:inline-block;font:700 9.5px/15px var(--mono);padding:0 5px;border-radius:3px;margin-left:6px;vertical-align:1px;border:1px solid var(--wire);color:var(--muted)}
+.tag.A,.tag.B,.tag.new{background:var(--live);border-color:var(--live);color:#fff}
+.tag.later{border-style:dashed}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+.legend i{display:inline-block;width:22px;height:13px;border-radius:3px;vertical-align:-2px;margin-right:5px;border:1.5px solid var(--wire)}
+.legend i.n{border:1.5px dashed var(--live);background:var(--live-soft)}
+.legend i.l{border-style:dashed;background:repeating-linear-gradient(45deg,transparent 0 4px,var(--bar) 4px 5px)}
+
+/* wireframe kit */
+.stage-wrap{overflow-x:auto;padding:12px 2px 6px}
+.frame{border:1.5px solid var(--ink);border-radius:10px;background:var(--panel);container-type:inline-size;width:100%;max-width:1000px;margin:0 auto;transition:max-width .25s}
+.frame.narrow{max-width:390px}
+.chrome{display:flex;gap:6px;align-items:center;padding:7px 10px;border-bottom:1.5px solid var(--ink);background:var(--sunken);font:11px var(--mono);color:var(--muted);border-radius:8px 8px 0 0}
+.chrome i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--wire)}
+.tb{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:8px 14px;border-bottom:1.5px solid var(--wire)}
+.tb .logo{width:20px;height:20px;background:var(--logo) center/contain no-repeat}
+.body{padding:16px;display:grid;gap:12px;align-content:start;min-height:400px}
+.cols{display:grid;gap:12px;grid-template-columns:var(--c,1fr 1fr);align-items:start}
+@container (max-width:560px){.cols{grid-template-columns:1fr}.hide-n{display:none}}
+.bx{border:1.5px solid var(--wire);border-radius:8px;padding:12px;display:grid;gap:8px;align-content:start;position:relative;min-width:0}
+.bx.dash{border-style:dashed;text-align:center;justify-items:center;padding:20px 12px}
+.h{font-weight:600;font-size:13px}
+.h1{font:600 20px/1.2 var(--serif)}
+.t{font-size:12.5px}
+.m{color:var(--muted);font-size:11.5px}
+.mono{font-family:var(--mono);font-size:11px}
+.ln{display:block;height:7px;border-radius:4px;background:var(--bar)}
+.lines{display:grid;gap:7px}
+.b{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--ink);border-radius:6px;padding:3px 10px;font-size:12px;white-space:nowrap;position:relative}
+.b.p{background:var(--ink);color:var(--panel)}
+.b.g{border-color:var(--wire);color:var(--muted)}
+.in{border:1.5px solid var(--wire);border-radius:6px;padding:6px 9px;font-size:12px;color:var(--muted);background:var(--bg);position:relative;min-width:0}
+.pill{border:1.5px solid var(--wire);border-radius:99px;padding:1px 9px;font:11px/1.7 var(--mono);position:relative;white-space:nowrap}
+.pill.on{border-color:var(--live);color:var(--live)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:relative}
+.sep{border-top:1.5px solid var(--line);margin:2px 0}
+.ic{width:34px;height:34px;border:1.5px solid var(--wire);border-radius:9px;flex:none;background:linear-gradient(to top right,transparent calc(50% - 1px),var(--bar) 50%,transparent calc(50% + 1px))}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none}
+.grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+.pg{height:8px;border:1.5px solid var(--wire);border-radius:5px;overflow:hidden;flex:1;min-width:60px}
+.pg i{display:block;height:100%;background:var(--ink)}
+.st{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:start;position:relative}
+.st .g{font:700 12px/18px var(--mono);text-align:center}
+.st.done .g{color:var(--ok)} .st.run .g{color:var(--live)} .st.wait{color:var(--muted)}
+.nw{border:1.5px dashed var(--live)!important;background:var(--live-soft);position:relative;border-radius:8px}
+div.nw,.row.nw{padding:10px 12px}
+[data-plan]::after{content:attr(data-plan);position:absolute;top:-8px;right:8px;background:var(--live);color:#fff;font:700 9px/14px var(--mono);padding:0 5px;border-radius:3px}
+.lt{border:1.5px dashed var(--wire)!important;color:var(--muted)!important;background:repeating-linear-gradient(45deg,transparent 0 6px,var(--line) 6px 7px)}
+[data-pin]{position:relative}
+[data-pin]::before{content:attr(data-pin);position:absolute;top:-9px;left:-9px;width:18px;height:18px;border-radius:50%;background:var(--ink);color:var(--panel);font:700 10px/18px var(--mono);text-align:center;z-index:2;box-shadow:0 0 0 2px var(--panel)}
+.m[data-pin],.kv[data-pin],.lane[data-pin],.row[data-pin]:not(.nw){padding-left:14px}
+.nopins [data-pin]::before{display:none}
+[data-pin].hot{outline:2px solid var(--live);outline-offset:3px;border-radius:6px}
+.bubble{border:1.5px solid var(--wire);border-radius:10px;padding:9px 11px;max-width:80%}
+.bubble.q{justify-self:end;background:var(--sunken)}
+.overlay{border:1.5px solid var(--ink);border-radius:10px;padding:10px;background:var(--panel);box-shadow:6px 6px 0 var(--bar);max-width:440px;width:100%;justify-self:center;display:grid;gap:6px}
+.kv{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:12px;align-items:center}
+table.w{border-collapse:collapse;font-size:12px;width:100%}
+table.w td,table.w th{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+table.w th{font:600 10.5px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+
+/* flows */
+.lane{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;font-size:12px}
+.track{position:relative;height:30px;border:1.5px solid var(--wire);border-radius:6px;overflow:hidden;display:flex}
+.track span{display:flex;align-items:center;justify-content:center;font:10.5px var(--mono);border-right:1.5px solid var(--panel);overflow:hidden;white-space:nowrap;min-width:0}
+.f-a{background:var(--bar)} .f-b{background:var(--ink);color:var(--panel)} .f-c{background:var(--wire);color:var(--panel)}
+.f-w{background:repeating-linear-gradient(45deg,transparent 0 5px,var(--bar) 5px 6px)} .f-q{background:var(--live);color:#fff} .f-0{background:transparent}
+.ticks{height:8px;background:repeating-linear-gradient(90deg,var(--wire) 0 1px,transparent 1px var(--tk,4%))}
+
+/* overview */
+.ov{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));margin-top:16px}
+.ov button{display:grid;gap:6px;text-align:left;padding:8px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.ov button:hover{border-color:var(--live)}
+.ov .mini{height:170px;overflow:hidden;border-radius:6px;pointer-events:none}
+.ov .mini .frame{zoom:.3;max-width:none;width:780px}
+.ov b{font-size:13px} .ov span{font-size:11.5px;color:var(--muted)}
+.plan{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin-top:14px}
+.plan div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel)}
+.plan b{display:block;font-size:13px} .plan p{margin:2px 0 0;font-size:12.5px;color:var(--muted)}
+
+@media (max-width:1100px){.shell{grid-template-columns:190px minmax(0,1fr)}.notes{grid-column:1/-1;position:static;max-height:none;border-left:0;border-top:1px solid var(--line)}}
+@media (max-width:700px){.shell{grid-template-columns:1fr}.side{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:2px}.side h4{width:100%;margin:8px 8px 2px}.side button{width:auto}.main{padding:14px 16px 40px}}
+@media print{.top,.side{display:none}.shell{display:block}.notes{position:static;max-height:none}}
+</style>
+</head>
+<body>
+<header class="top">
+  <i class="logo" aria-hidden="true"></i>
+  <div><h1>Mitra wireframes</h1><small>final design · built in 0.9.0 (2026-11-14): queue, resume, stepping aside, speed choice</small></div>
+  <span class="sp"></span>
+  <div class="seg" role="group" aria-label="Frame width"><button id="vwD" aria-pressed="true">Desktop</button><button id="vwN" aria-pressed="false">Narrow</button></div>
+  <div class="seg" role="group" aria-label="Annotations"><button id="pins" aria-pressed="true">Notes on</button></div>
+  <div class="seg" role="group" aria-label="Theme"><button id="theme">Light / dark</button></div>
+</header>
+<div class="shell">
+  <nav class="side" id="side" aria-label="Screens"></nav>
+  <main class="main" id="main"></main>
+  <aside class="notes" id="notes" aria-label="Annotations"></aside>
+</div>
+
+<script>
+/* ---------- kit ---------- */
+const ln = (...w) => '<div class="lines">' + w.map(x => `<i class="ln" style="width:${x}%"></i>`).join('') + '</div>';
+const pin = n => n ? ` data-pin="${n}"` : '';
+const tb = (name, pill, p, on) => `<div class="tb"><i class="logo"></i><b>${name}</b><span class="sp"></span><span class="pill${on ? ' on' : ''}"${pin(p)}>${pill || 'no model loaded'}</span><span class="b g hide-n">Manager</span><span class="b g hide-n">Go to · Ctrl K</span></div>`;
+const nav = (on, extra = '') => `<div class="tb"><i class="logo"></i><b>Mitra</b>${['Apps', 'Create', 'Memory', 'System'].map(x => `<span class="b ${x === on ? 'p' : 'g'}">${x}</span>`).join('')}<span class="sp"></span>${extra}<span class="b g hide-n">Go to · Ctrl K</span></div>`;
+const frame = (title, inner) => `<div class="frame"><div class="chrome"><i></i><i></i><i></i><span>${title}</span></div>${inner}</div>`;
+const st = (state, name, detail, p, extra = '') => `<div class="st ${state}"${pin(p)}><span class="g">${{done: '✓', run: '●', wait: '○', hold: 'Ⅱ'}[state]}</span><div><div class="t"><b>${name}</b></div><div class="m">${detail}</div>${extra}</div></div>`;
+const APPWIN = n => `${n} · its own window and process`;
+const LAUNCH = 'Mitra · 127.0.0.1:7421';
+
+/* shared fragments */
+const meetings = p => `<div class="bx"${pin(p)}><div class="h">Meetings</div>
+  ${['Quarterly Review', 'Relax Focus', 'Meeting Discussion'].map((t, i) => `<div><div class="t">${t}</div>${ln(90 - i * 12)}<div class="m">${[7, 4, 2][i]} action items</div></div>`).join('<div class="sep"></div>')}</div>`;
+const finder = p => `<div class="bx"${pin(p)}><div class="h">Find what was said</div><div class="in">Search every meeting: a name, a number, a phrase</div></div>`;
+const speed = (p, sel = 0) => `<div class="nw" data-plan="B"${pin(p)}><div class="h">Speed</div>
+  <div class="t">${sel ? '○' : '◉'} <b>Accurate</b> · Whisper medium · about 97 min for this recording</div>
+  <div class="t">${sel ? '◉' : '○'} <b>Fast</b> · Whisper small · about 70 min · less exact on Hindi-English</div>
+  <div class="m">Times come from this device's own past runs in the log.</div></div>`;
+const nextUp = (p, items) => `<div class="nw" data-plan="A"${pin(p)}><div class="row"><div class="h">Next up</div><span class="sp"></span><span class="m">one at a time, in this order</span></div>
+  ${items.map((x, i) => `<div class="row t"><span class="mono">${i + 1}</span><span>${x}</span><span class="sp"></span><span class="b g">↑</span><span class="b g">↓</span><span class="b g">Remove</span></div>`).join('')}
+  <div class="bx dash m" style="padding:10px">Drop another recording to add it to the line</div></div>`;
+const runCard = (stages, foot) => `<div class="bx"><div class="row"><div><div class="h">Quarterly review.m4a</div><div class="m">2 h 02 min · Accurate · started 14:32</div></div></div>${stages}${foot}</div>`;
+
+/* ---------- screens ---------- */
+const S = [
+{ id: 'welcome', group: 'Launcher', name: 'Welcome', via: 'Terminal: mitra-marketplace',
+  why: 'The first thing seen. One logo, one line, one action.',
+  states: [{ name: 'Welcome', html: frame(LAUNCH, `<div class="body" style="place-items:center;align-content:center;min-height:440px;text-align:center">
+    <i class="logo" style="width:84px;height:84px;display:block;background:var(--logo) center/contain no-repeat" data-pin="1"></i>
+    <div class="h1" data-pin="2" style="font-size:30px">Welcome</div>
+    <div style="width:260px">${ln(100, 70)}</div>
+    <span class="b p" data-pin="3" style="padding:7px 22px;font-size:14px">Enter →</span>
+    <div class="m" data-pin="4">Nothing is in memory until you open an app.</div></div>`),
+    notes: [['built', 'The Mitra logo', 'Colour mark on light, tinted mark on dark. Never stretched, never recoloured.'],
+      ['built', 'Greeting', 'A single serif heading. No menu, no settings here.'],
+      ['built', 'Enter', 'The only primary action on the screen. Leads to Your apps.'],
+      ['built', 'Standing promise', 'States the memory rule in plain words before anything is opened.']] }] },
+
+{ id: 'apps', group: 'Launcher', name: 'Your apps', via: 'Enter on Welcome · Ctrl K from any window',
+  why: 'The icon list. The launcher starts apps and shows state; it does no work itself.',
+  states: [
+  { name: 'Idle', html: frame(LAUNCH, nav('Apps') + `<div class="body">
+    <div class="row"><div class="h1">Your apps</div><span class="sp"></span><div class="in" style="width:180px" data-pin="1">Find an app</div></div>
+    <div class="grid" data-pin="2">${['Mitra PDF', 'Markdown Reader', 'Anything to MD', 'TwinMind', 'Ask Mitra', 'Supplier Quotes'].map((n, i) => `<div class="bx"><div class="row"><i class="ic"></i><div><div class="h">${n}</div><div class="m">${i === 5 ? 'made by you' : 'built in'}</div></div></div>${ln(92, 60)}<div class="row"><span class="sp"></span><span class="b p">Open</span></div></div>`).join('')}
+    <div class="bx dash" data-pin="3"><div class="h">+ Create one</div><div class="m">Describe an app in a sentence</div></div></div>
+    <div class="m" data-pin="4">Drop a file on an icon to open it there.</div></div>`),
+    notes: [['built', 'Find an app', 'Filters the grid as you type.'],
+      ['built', 'One card per app', 'Icon, name, one line. Open starts that app as its own process in its own window (about 110 ms, about 12 MB).'],
+      ['built', 'Create one', 'Shortcut to the Create page.'],
+      ['built', 'Drop to open', 'A file dropped on an icon, or on the page, opens in the app that reads that type.']] },
+  { name: 'Apps running', isnew: 1, html: frame(LAUNCH, nav('Apps') + `<div class="body">
+    <div class="row nw" data-plan="A" data-pin="1"><span class="dot" style="background:var(--live)"></span><span class="t"><b>TwinMind</b> · What was said · piece 7 of 24 · about 50 min left</span><span class="sp"></span><span class="m">1 recording waiting · Ask Mitra goes next</span><span class="b g">Show</span></div>
+    <div class="row"><div class="h1">Your apps</div><span class="sp"></span><div class="in" style="width:180px">Find an app</div></div>
+    <div class="grid">${['Mitra PDF', 'Markdown Reader', 'Anything to MD', 'TwinMind', 'Ask Mitra', 'Supplier Quotes'].map((n, i) => { const r = [0, 3, 4].includes(i); return `<div class="bx"${i === 3 ? ' data-pin="2"' : ''}><div class="row"><i class="ic"></i><div><div class="h">${n}</div><div class="m">${r ? '<span class="dot" style="display:inline-block"></span> running · 12 MB' : 'not running'}</div></div></div>${ln(92, 60)}<div class="row"><span class="sp"></span>${r ? `<span class="b g"${i === 0 ? ' data-pin="3"' : ''}>Close</span><span class="b p">Show</span>` : '<span class="b p">Open</span>'}</div></div>`; }).join('')}</div></div>`),
+    notes: [['A', 'Activity strip', 'One line for the job that holds the model: app, stage, piece, time left, and who is waiting. Present only while a job runs. Show brings that app forward.'],
+      ['built', 'Running mark', 'Green dot and the memory figure on each running app.'],
+      ['built', 'Show and Close', 'A second click reuses the same process. Close ends it; a running TwinMind job is saved first (see TwinMind, Interrupted).']] }] },
+
+{ id: 'create', group: 'Launcher', name: 'Create', via: 'Launcher tab · Create one card · terminal: mitra-marketplace new "…"',
+  why: 'An app from a sentence. Draft first, then create, so nothing is written until you have seen it.',
+  states: [
+  { name: 'Describe', html: frame(LAUNCH, nav('Create') + `<div class="body"><div class="h1">Create an app</div>
+    <div class="in" style="min-height:92px" data-pin="1">A meeting app called Standup Notes. It connects to Dropbox folder Meetings/Standups, transcribes audio, and writes a summary with action items.</div>
+    <div class="row"><span class="b p" data-pin="2">Draft it</span></div></div>`),
+    notes: [['built', 'One sentence', 'Name, where its files live, and what it should do.'],
+      ['built', 'Draft it', 'Reads the sentence and proposes a manifest. Nothing is written yet.']] },
+  { name: 'Draft', html: frame(LAUNCH, nav('Create') + `<div class="body"><div class="h1">Create an app</div>
+    <div class="in">A meeting app called Standup Notes. It connects to Dropbox folder…</div>
+    <div class="bx" data-pin="1"><div class="row"><i class="ic"></i><div><div class="h">Standup Notes</div><div class="m">id: standup-notes</div></div></div>
+      <div class="kv"><span class="m">Connector</span><span>Dropbox · Meetings/Standups</span><span></span>
+      <span class="m">Needs</span><span data-pin="2"><span class="pill">transcription</span> <span class="pill">meeting-notes</span></span><span></span>
+      <span class="m">Opens</span><span>.wav .mp3 .m4a</span><span></span></div></div>
+    <div class="row"><span class="b p" data-pin="3">Create app</span><span class="b g">Change the sentence</span></div></div>`),
+    notes: [['built', 'The draft', 'Name, icon, connector and file types as Mitra understood them.'],
+      ['built', 'Capabilities, not models', 'The app says what it needs. Each device picks the model that fits it.'],
+      ['built', 'Create app', 'Writes the folder to ~/.mitra/apps. The app appears as an icon, runs as its own process, and travels with push and update.']] }] },
+
+{ id: 'memory', group: 'Launcher', name: 'Memory', via: 'Launcher tab',
+  why: 'The log of everything done, reviewable by week, two weeks or month, and prunable.',
+  states: [{ name: 'Report', html: frame(LAUNCH, nav('Memory') + `<div class="body"><div class="row"><div class="h1">Memory</div><span class="sp"></span>
+    <span data-pin="1" class="row"><span class="b p">Week</span><span class="b g">Two weeks</span><span class="b g">Month</span></span></div>
+    <div class="grid" data-pin="2">${['Opened', 'Converted', 'Asked', 'Recorded'].map((x, i) => `<div class="bx"><div class="m">${x}</div><div class="h1">${[41, 17, 9, 3][i]}</div></div>`).join('')}</div>
+    <div class="cols" style="--c:1.3fr 1fr"><div class="bx" data-pin="3"><div class="h">Most used</div>${['Mitra PDF', 'TwinMind', 'Anything to MD', 'Ask Mitra'].map((x, i) => `<div class="row t"><span style="width:110px">${x}</span><span class="pg"><i style="width:${[86, 60, 38, 20][i]}%"></i></span></div>`).join('')}</div>
+    <div class="bx"><div class="h">Models this week</div>${ln(95, 80, 88)}<div class="nw t" data-plan="A" data-pin="4">Jobs: 3 finished · 1 resumed after a stop · model stepped aside 6 times</div></div></div>
+    <div class="row" data-pin="5"><span class="b">Save report</span><span class="m">Saved reports: 2026-11-06, 2026-10-30</span><span class="sp"></span><span class="b g" data-pin="6">Prune logs older than 90 days</span></div></div>`),
+    notes: [['built', 'Period', 'Week, two weeks or month.'],
+      ['built', 'Counts', 'What you opened, converted, asked and recorded in the period.'],
+      ['built', 'Most used', 'Apps ranked by use.'],
+      ['A', 'Job history', 'New log events (job.queued, job.resumed, model.yield) are counted here so waits and recoveries are visible.'],
+      ['built', 'Save report', 'Writes the report to disk; earlier ones are listed.'],
+      ['built', 'Prune', 'Removes old log lines. Asks first.']] }] },
+
+{ id: 'system', group: 'Launcher', name: 'System', via: 'Launcher tab · RAM pill in any app',
+  why: 'What is in memory right now, who holds the model, and who is waiting.',
+  states: [{ name: 'During a job', isnew: 1, html: frame(LAUNCH, nav('System') + `<div class="body"><div class="h1">System</div>
+    <div class="grid" data-pin="1">${[['RAM in use by Mitra', '1,020 MB'], ['Model ceiling', '1,024 MB'], ['Kept free', '800 MB'], ['Package on disk', '2,024 MB']].map(x => `<div class="bx"><div class="m">${x[0]}</div><div class="h">${x[1]}</div></div>`).join('')}</div>
+    <div class="cols"><div class="bx" data-pin="2"><div class="h">Apps running now</div>${['TwinMind · 12 MB', 'Ask Mitra · 12 MB', 'Mitra PDF · 12 MB'].map(x => `<div class="row t"><span class="dot"></span>${x}<span class="sp"></span><span class="b g">Close</span></div>`).join('')}</div>
+    <div class="bx" data-pin="3"><div class="h">Model running now</div><div class="row t"><span>Whisper medium · 972 of 985 MB · for TwinMind</span><span class="sp"></span><span class="b g">Stop</span></div><div class="pg"><i style="width:95%"></i></div></div></div>
+    <div class="nw" data-plan="A" data-pin="4"><div class="h">Waiting for the model</div>
+      <table class="w"><tr><th>#</th><th>App</th><th>What</th><th>Waited</th><th>Goes</th></tr>
+      <tr><td>1</td><td>Ask Mitra</td><td>a question</td><td>38 s</td><td>after this piece, about 1 min</td></tr>
+      <tr><td>2</td><td>TwinMind</td><td>Vendor review.m4a</td><td>12 min</td><td>after the current recording</td></tr></table></div>
+    <div class="bx" data-pin="5"><div class="h">Capabilities on this device</div><table class="w"><tr><th>Capability</th><th>Model</th><th>Needs</th></tr>
+      <tr><td>assistant</td><td>Qwen3 0.6B</td><td>600 MB</td></tr><tr><td>transcription</td><td>Whisper medium → small → base</td><td>985 MB</td></tr><tr><td>meeting-notes</td><td>Gemma 3 1B → Qwen3 0.6B</td><td>950 MB</td></tr><tr><td>diarization</td><td>Sortformer</td><td>200 MB</td></tr></table></div></div>`),
+    notes: [['built', 'Limits', 'RAM in use, the 1 GB ceiling, the 800 MB kept free for the rest of the device, and package size.'],
+      ['built', 'Apps running now', 'Each with its memory and a Close.'],
+      ['built', 'Model running now', 'One at most. Shows its own cap and which app it is working for. Stop ends it.'],
+      ['A', 'Waiting for the model', 'The line. A question goes ahead of a recording at the next piece boundary; recordings go first come, first served. Nothing in the line times out.'],
+      ['built', 'Capabilities', 'What each capability resolves to on this device, with the step-down order.']] }] },
+
+{ id: 'shared', group: 'Shared by every app', name: 'Top bar and Go to', via: 'Every app window',
+  why: 'The same bar, palette, file browser and manager in every app, from one shared script.',
+  states: [
+  { name: 'Top bar', html: frame(APPWIN('Any app'), `<div class="tb"><i class="logo" data-pin="1"></i><b data-pin="2">App name</b><span class="sp"></span><span class="pill" data-pin="3">no model loaded</span><span class="b g" data-pin="4">Manager</span><span class="b g" data-pin="5">Go to · Ctrl K</span></div><div class="body">${ln(60, 90, 84, 40)}</div>`),
+    notes: [['built', 'Logo', 'Same mark in every window.'], ['built', 'App name', 'Each app is its own product with its own window title.'],
+      ['built', 'RAM pill', 'Shows the model in memory and its size while one runs; returns to "no model loaded" after.'],
+      ['built', 'Manager', 'Per-app review of what its models cost.'], ['built', 'Go to', 'Opens the palette.']] },
+  { name: 'Go to', html: frame(APPWIN('Any app'), tb('App name') + `<div class="body" style="align-content:center"><div class="overlay" data-pin="1"><div class="in">Go to an app or page</div>
+    ${['Mitra PDF', 'Markdown Reader', 'Anything to MD', 'TwinMind', 'Ask Mitra', 'Memory', 'System'].map((x, i) => `<div class="row t" style="padding:3px 6px;${i === 0 ? 'background:var(--sunken);border-radius:5px' : ''}">${x}<span class="sp"></span><span class="m">${i < 5 ? 'app' : 'page'}</span></div>`).join('')}</div></div>`),
+    notes: [['built', 'Palette', 'Ctrl K in any window. Type, arrow keys, Enter. Starts the app if it is not running.']] },
+  { name: 'File browser', html: frame(APPWIN('Any app'), tb('App name') + `<div class="body"><div class="cols" style="--c:1fr 2fr"><div class="bx" data-pin="1"><div class="h">Recent</div>${ln(90, 75, 82, 60)}</div>
+    <div class="bx" data-pin="2"><div class="row"><span class="in" style="flex:1">C:\\Users\\…\\Documents</span><span class="b g">Up</span></div>${['Folder', 'Folder', 'File this app opens', 'File this app opens', 'Other file (dimmed)'].map(x => `<div class="row t"><i class="ic" style="width:16px;height:16px;border-radius:4px"></i>${x}</div>`).join('')}</div></div>
+    <div class="bx dash m" data-pin="3">or drop a file anywhere in this window</div></div>`),
+    notes: [['built', 'Recent files', 'Per app.'], ['built', 'Browse', 'Only the types this app opens are selectable.'], ['built', 'Drop', 'Opens here if this app reads the type, otherwise in the app that does.']] },
+  { name: 'Manager', html: frame(APPWIN('Any app'), tb('TwinMind') + `<div class="body"><div class="bx" data-pin="1"><div class="h">TwinMind · model use</div><table class="w"><tr><th>Model</th><th>Runs</th><th>Peak</th><th>Cap</th><th>Closest to cap</th></tr>
+    <tr><td>Whisper medium</td><td>24</td><td>980 MB</td><td>985 MB</td><td>5 MB</td></tr><tr><td>Gemma 3 1B</td><td>43</td><td>945 MB</td><td>950 MB</td><td>5 MB</td></tr><tr><td>Sortformer</td><td>29</td><td>187 MB</td><td>200 MB</td><td>13 MB</td></tr></table></div>
+    <div class="bx" data-pin="2"><div class="h">Events</div><div class="t m">Stopped over budget: 0 · Refused: 0 · Stepped down: 0</div><div class="nw t" data-plan="A">Stepped aside for another app: 6 · Resumed after a stop: 1</div></div></div>`),
+    notes: [['built', 'Cost per model', 'Runs, peak memory against its own cap, and how close it came.'], ['built', 'Events', 'Stops, refusals and step-downs for this app. The plan adds yields and resumes.']] }] },
+
+{ id: 'pdf', group: 'Apps', name: 'Mitra PDF', via: 'Icon · double-click a .pdf · drop',
+  why: 'Read a PDF as pages or as structured text. No model.',
+  states: [
+  { name: 'Page view', html: frame(APPWIN('Mitra PDF'), tb('Mitra PDF') + `<div class="body"><div class="row"><span class="t" data-pin="1"><b>Annual report.pdf</b></span><span class="sp"></span><span class="b" data-pin="2">Text view</span><span class="b" data-pin="3">Convert to Markdown</span><span class="b g">Open in tab</span></div>
+    <div class="row"><span class="b lt" data-pin="4">Search</span><span class="b lt">Outline</span><span class="b lt">Read aloud</span></div>
+    <div class="bx" style="min-height:300px;justify-items:center" data-pin="5"><div class="bx" style="width:min(320px,100%);min-height:270px">${ln(60)}<br>${ln(100, 96, 98, 70)}<br>${ln(100, 92, 97, 99, 40)}</div></div></div>`),
+    notes: [['built', 'File name', ''], ['built', 'Text view', 'Switches to the document as headings, paragraphs and lists.'],
+      ['built', 'Convert to Markdown', 'Opens the same file in Anything to MD for saving.'],
+      ['later', 'Search, outline, read aloud', 'Not built and not part of this plan. Shown so the toolbar has room for them.'],
+      ['built', 'Page view', 'The browser\'s own PDF viewer. A PDF dropped here replaces the open one.']] },
+  { name: 'Text view', html: frame(APPWIN('Mitra PDF'), tb('Mitra PDF') + `<div class="body"><div class="row"><span class="t"><b>Annual report.pdf</b></span><span class="sp"></span><span class="b p" data-pin="1">Page view</span><span class="b">Convert to Markdown</span></div>
+    <div class="bx" style="min-height:300px" data-pin="2"><div class="h1">Annual report</div>${ln(100, 96, 70)}<div class="h">1. Summary</div>${ln(100, 92, 97, 40)}<div class="t">• ${'&nbsp;'}</div>${ln(60, 54)}</div>
+    <div class="m" data-pin="3">A scanned page has no text to show.</div></div>`),
+    notes: [['built', 'Toggle back', ''], ['built', 'Structured text', 'From the shared converter: headings by type size, joined paragraphs, lists, no running headers or page numbers.'],
+      ['later', 'Scanned pages', 'Empty today. SmolVLM could read them (404 MB, measured once) but is not part of this plan.']] }] },
+
+{ id: 'md', group: 'Apps', name: 'Markdown Reader', via: 'Icon · double-click a .md · a TwinMind memo or search hit',
+  why: 'Read any Markdown file, with an outline. No model.',
+  states: [{ name: 'Rendered', html: frame(APPWIN('Markdown Reader'), tb('Markdown Reader') + `<div class="body"><div class="row"><span class="t"><b>2026-11-13 1432 Quarterly Review.md</b></span><span class="sp"></span><span class="b" data-pin="1">Source</span><span class="b g" data-pin="2">Copy path</span></div>
+    <div class="cols" style="--c:200px 1fr"><div class="bx" data-pin="3"><div class="h">Outline</div>${['Meeting Core Focus', 'Key Discussion Points', 'Action Items', 'Commitments heard', 'Follow-up Needed', 'Transcript'].map(x => `<div class="t">${x}</div>`).join('')}</div>
+    <div class="bx" style="min-height:300px" data-pin="4"><div class="h1">Quarterly Review</div>${ln(100, 94, 60)}<div class="h">Action Items</div>${ln(80, 74, 66)}<div class="h" data-pin="5">Transcript</div>${ln(100, 97, 92)}</div></div></div>`),
+    notes: [['built', 'Source', 'Toggles the raw text.'], ['built', 'Copy path', ''], ['built', 'Outline', 'From the headings. Click to jump.'],
+      ['built', 'Rendered document', 'Tables, code, quotes; links to other files open here.'],
+      ['built', 'Opened at a line', 'A TwinMind search hit opens the memo scrolled to the matching line.']] }] },
+
+{ id: 'tomd', group: 'Apps', name: 'Anything to MD', via: 'Icon · drop · Convert to Markdown in Mitra PDF',
+  why: 'Any document to Markdown, keeping the document\'s own structure. No model.',
+  states: [
+  { name: 'Empty', html: frame(APPWIN('Anything to MD'), tb('Anything to MD') + `<div class="body"><div class="bx dash" style="min-height:240px;align-content:center" data-pin="1"><div class="h">Drop a document</div><div class="m">Word, PowerPoint, Excel, PDF, HTML, EPUB, RTF, ODT, CSV, notebooks</div><span class="b p">Browse</span></div>
+    <div class="bx" data-pin="2"><div class="h">Recent</div>${ln(70, 62)}</div></div>`),
+    notes: [['built', 'Drop or browse', 'Also takes anything no other app claims.'], ['built', 'Recent', '']] },
+  { name: 'Converted', html: frame(APPWIN('Anything to MD'), tb('Anything to MD') + `<div class="body"><div class="row"><span class="t"><b>Proposal.docx</b></span><span class="m" data-pin="1">converted in 0.6 s · 31 MB</span><span class="sp"></span><span class="b" data-pin="2">Edit source</span><span class="b g">Copy</span><span class="b p" data-pin="3">Save .md</span></div>
+    <div class="bx" style="min-height:290px" data-pin="4"><div class="h1">Proposal</div>${ln(100, 92)}<div class="h">Scope</div>${ln(96, 88, 60)}
+      <table class="w"><tr><th>Item</th><th>Qty</th><th>Rate</th></tr><tr><td>${ln(70)}</td><td>${ln(40)}</td><td>${ln(50)}</td></tr><tr><td>${ln(60)}</td><td>${ln(40)}</td><td>${ln(50)}</td></tr></table></div>
+    <div class="m" data-pin="5">Saved beside the original: Proposal.md</div></div>`),
+    notes: [['built', 'Cost shown', 'Seconds and worker memory for the conversion.'], ['built', 'Edit source', 'Switch the preview to editable Markdown.'],
+      ['built', 'Save .md', 'Beside the original; to Downloads for a dropped file.'],
+      ['built', 'Preview keeps structure', 'Heading levels, lists, tables with merged cells, links, slide sections, speaker notes.'],
+      ['built', 'Where it went', 'The saved path, stated after saving.']] }] },
+
+{ id: 'twinmind', group: 'Apps', name: 'TwinMind', via: 'Icon · drop a recording · double-click an audio file',
+  why: 'A recording or transcript in, a memo out. This is where the plan changes most: calls up to 2 hours, a line of recordings, and other apps in use at the same time.',
+  states: [
+  { name: 'New meeting', html: frame(APPWIN('TwinMind'), tb('TwinMind') + `<div class="body"><div class="cols" style="--c:1.5fr 1fr"><div style="display:grid;gap:12px">
+    <div class="bx"><div class="h">New meeting</div>
+      <div class="bx dash" data-pin="1"><div class="t"><b>Quarterly review.m4a</b> · 2 h 02 min</div><div class="m">Drop a recording or a transcript, or browse</div></div>
+      <div class="in" data-pin="2">Priya, Sam, Anirudh</div>
+      ${speed(3)}
+      <div class="row"><span class="b p" data-pin="4">Write the memo</span><span class="m">You can close this window while it works.</span></div></div>
+    <div class="bx" data-pin="5"><div class="h">What will run</div><table class="w">
+      <tr><td>1</td><td>Who speaks when</td><td>Sortformer</td><td>200 MB</td><td>29 windows</td></tr>
+      <tr><td>2</td><td>What was said</td><td>Whisper medium</td><td>985 MB</td><td>24 pieces</td></tr>
+      <tr><td>3</td><td>Gist</td><td>no model</td><td></td><td></td></tr>
+      <tr><td>4</td><td>Notes, then check</td><td>Gemma 3 1B</td><td>950 MB</td><td>about 43 sections</td></tr>
+      <tr><td>5</td><td>Memo</td><td colspan="3">Dropbox/Mitra/TwinMind</td></tr></table></div></div>
+    <div style="display:grid;gap:12px">${finder(6)}${meetings(7)}</div></div></div>`),
+    notes: [['built', 'File', 'Audio (.wav .mp3 .m4a .ogg .flac), subtitles, or a transcript in text, Word, PDF. The length is read at once.'],
+      ['built', 'Who was there', 'Optional names, used as hints.'],
+      ['B', 'Speed', 'Accurate (Whisper medium) or Fast (Whisper small), chosen per recording. Each shows a time for this file on this device, taken from past runs in the log; before any run it uses the measured defaults.'],
+      ['built', 'Write the memo', 'Starts the job. While another job runs, this button reads "Add to the line".'],
+      ['built', 'What will run', 'Models one after another, each with its memory. The plan adds the piece counts, so the length of the job is visible before it starts.'],
+      ['built', 'Find what was said', 'Searches every memo; a hit opens the memo at that line.'],
+      ['built', 'Meetings', 'Past memos with gist and action count. Unfinished jobs appear first (see Interrupted).']] },
+
+  { name: 'Running', isnew: 1, html: frame(APPWIN('TwinMind'), tb('TwinMind', 'Whisper medium · 972 MB', 1, 1) + `<div class="body"><div class="cols" style="--c:1.5fr 1fr"><div style="display:grid;gap:12px">
+    ${runCard(
+      st('done', 'Who speaks when', '29 of 29 windows · 31 min 50 s · 3 voices', 2) +
+      st('run', 'What was said', 'piece 7 of 24 · 13 min so far', 3, '<div class="row"><span class="pg"><i style="width:25%"></i></span><span class="m">6 saved</span></div>') +
+      st('wait', 'Gist', 'no model') + st('wait', 'Notes, then check', 'about 43 sections') + st('wait', 'Memo', 'Dropbox/Mitra/TwinMind'),
+      `<div class="nw" data-plan="A" data-pin="4"><div class="row"><span class="t"><b>About 50 min left</b></span><span class="sp"></span><span class="b">Pause</span><span class="b g">Cancel</span></div>
+       <div class="m">Every finished piece is saved. Close this window or shut the laptop; the job picks up at piece 7.</div></div>`)}
+    ${nextUp(5, [])}</div>
+    <div style="display:grid;gap:12px">${finder()}${meetings()}</div></div></div>`),
+    notes: [['built', 'RAM pill', 'The model in memory now. Empty between pieces, which is when another app can take a turn.'],
+      ['built', 'Finished stage', 'Time taken and what it found.'],
+      ['A', 'Progress by piece', 'Speakers by 5-minute window, speech by 5-minute piece, notes by section. Each finished piece is written to disk before the next starts.'],
+      ['A', 'Time left, Pause, Cancel', 'Time left is recomputed from this run\'s own speed. Pause stops after the current piece and frees the model. Cancel asks first and keeps the saved pieces until you discard them.'],
+      ['A', 'Next up', 'Empty here. Drop another recording at any time to line it up.']] },
+
+  { name: 'A line of recordings', isnew: 1, html: frame(APPWIN('TwinMind'), tb('TwinMind', 'Whisper medium · 972 MB', 0, 1) + `<div class="body"><div class="cols" style="--c:1.5fr 1fr"><div style="display:grid;gap:12px">
+    ${runCard(st('done', 'Who speaks when', '29 of 29 windows') + st('run', 'What was said', 'piece 7 of 24', 0, '<div class="row"><span class="pg"><i style="width:25%"></i></span></div>') + st('wait', 'Gist · Notes · Memo', 'to come'),
+      `<div class="row nw" data-plan="A" data-pin="1"><span class="t"><b>Ask Mitra</b> has a question waiting. It goes next, after this piece (about 1 min).</span></div>`)}
+    ${nextUp(2, ['Vendor review.m4a · 48 min · Fast · about 28 min', 'Standup.wav · 16 min · Accurate · about 12 min'])}
+    <div class="m" data-pin="3">All three done by about 16:25.</div></div>
+    <div style="display:grid;gap:12px">${finder()}${meetings()}</div></div></div>`),
+    notes: [['A', 'Who is waiting', 'Shown inside the running job, so it is clear why a piece boundary matters. A question always goes ahead of the next piece.'],
+      ['A', 'The line', 'Recordings run one at a time, first come first served. Reorder or remove before they start. Each keeps its own speed choice. The line is a file on disk, so it survives a restart.'],
+      ['A', 'When it will all be done', 'Sum of the estimates, as a clock time.']] },
+
+  { name: 'Stepping aside', isnew: 1, html: frame(APPWIN('TwinMind'), tb('TwinMind', 'Qwen3 0.6B · 564 MB · Ask Mitra', 1, 1) + `<div class="body"><div class="cols" style="--c:1.5fr 1fr"><div style="display:grid;gap:12px">
+    ${runCard(st('done', 'Who speaks when', '29 of 29 windows · 31 min 50 s') + st('done', 'What was said', '24 of 24 pieces · 50 min 10 s') + st('done', 'Gist', '3 sentences quoted') +
+      st('hold', 'Notes, then check', 'section 18 of 43 · waiting its turn', 2, '<div class="row"><span class="pg"><i style="width:40%"></i></span><span class="m">17 saved</span></div>') + st('wait', 'Memo', 'Dropbox/Mitra/TwinMind'),
+      `<div class="row nw" data-plan="A" data-pin="3"><span class="t">Ask Mitra is answering a question. Notes continue by themselves in a few seconds.</span></div>`)}</div>
+    <div style="display:grid;gap:12px">${finder()}${meetings()}</div></div></div>`),
+    notes: [['A', 'The model changed hands', 'The pill names the model in memory and the app it is working for. Still one model, still under 1 GB.'],
+      ['A', 'Held between sections', 'The notes model is released after each section (about 21 s) instead of being kept for the whole stage. If nobody is waiting it reloads at once.'],
+      ['A', 'No action needed', 'The job resumes by itself. Nothing here is an error and nothing is lost.']] },
+
+  { name: 'Interrupted', isnew: 1, html: frame(APPWIN('TwinMind'), tb('TwinMind') + `<div class="body"><div class="cols" style="--c:1.5fr 1fr"><div style="display:grid;gap:12px">
+    <div class="nw" data-plan="A" data-pin="1"><div class="h">Quarterly review.m4a did not finish</div>
+      <div class="t">Stopped at 15:52. The laptop went to sleep during "What was said".</div>
+      <div class="kv" data-pin="2"><span class="m">Who speaks when</span><span class="pg"><i style="width:100%"></i></span><span class="m">29 of 29 saved</span>
+        <span class="m">What was said</span><span class="pg"><i style="width:67%"></i></span><span class="m">16 of 24 saved</span>
+        <span class="m">Notes</span><span class="pg"><i style="width:0"></i></span><span class="m">not started</span></div>
+      <div class="row" data-pin="3"><span class="b p">Resume from piece 17</span><span class="b">Start over</span><span class="b g">Discard</span><span class="sp"></span><span class="m">about 32 min left</span></div></div>
+    <div class="bx"><div class="h">New meeting</div><div class="bx dash m" style="padding:12px">Drop a recording or a transcript, or browse</div></div></div>
+    <div style="display:grid;gap:12px">${finder()}<div class="bx" data-pin="4"><div class="h">Meetings</div><div class="row t"><span class="pill on">unfinished</span>Quarterly review<span class="sp"></span><span class="b g">Resume</span></div><div class="sep"></div><div class="t">Relax Focus</div>${ln(80)}<div class="sep"></div><div class="t">Meeting Discussion</div>${ln(70)}</div></div></div></div>`),
+    notes: [['A', 'Shown first on opening', 'A job that stopped (sleep, crash, memory refused, closed laptop) is the first thing on the page next time, with the reason in plain words.'],
+      ['A', 'What was kept', 'Per stage. The source recording is checked against its saved fingerprint so a changed file is never resumed by mistake.'],
+      ['A', 'Resume, Start over, Discard', 'Resume is the primary action. Discard sends the saved pieces to the Recycle Bin. A job you paused yourself stays paused until you resume it.'],
+      ['A', 'Also in the list', 'Unfinished jobs sit at the top of Meetings until resumed or discarded.']] },
+
+  { name: 'Done', html: frame(APPWIN('TwinMind'), tb('TwinMind') + `<div class="body"><div class="cols" style="--c:1.5fr 1fr"><div style="display:grid;gap:12px">
+    <div class="bx" data-pin="1"><div class="h">Quarterly Review</div><div class="m mono">Dropbox/Mitra/TwinMind/2026-11-13 1432 Quarterly Review.md</div>
+      <div class="row"><span class="b p">Open the memo</span><span class="b g">Show in folder</span></div>
+      <div class="t m" data-pin="2">Heard Hindi and English, written in English · Accurate · 1 h 38 min · paused once, stepped aside 6 times</div>
+      <div class="t m" data-pin="3">Check: 3 items removed as wrong · 11 dropped as echo</div></div>
+    <div class="bx" data-pin="4"><div class="h">Who is who?</div>
+      ${[['Speaker 1', '"We should close the vendor list by Friday."', ''], ['Speaker 2', '"I will send the revised numbers tomorrow."', ''], ['Speaker 3', '"Send me the deck after this."', 'first heard at 1 h 05 min']].map((s, i) => `<div class="row t"><b style="width:70px">${s[0]}</b><span class="m" style="flex:1;min-width:120px">${s[1]}${s[2] ? ' · ' + s[2] : ''}</span><span class="in" style="width:110px">Name</span>${i === 2 ? '<span class="in nw" data-plan="new" data-pin="5" style="padding:6px 9px">Same person as ▾</span>' : ''}</div>`).join('')}
+      <div class="row"><span class="b" data-pin="6">Use these names</span></div></div></div>
+    <div style="display:grid;gap:12px">${finder()}${meetings()}</div></div></div>`),
+    notes: [['built', 'The memo', 'Title, path, and Open (in Markdown Reader).'],
+      ['built', 'What happened', 'Language heard, speed, total time, any step-down to a smaller model. The plan adds pauses and yields.'],
+      ['built', 'The check', 'Counts of what the grounding check removed. The memo lists them.'],
+      ['built', 'Who is who?', 'One line per voice with something it said. Names replace "Speaker N" throughout the memo.'],
+      ['new', 'Same person as', 'My addition for long calls. Over 28 window joins a quiet voice can come back under a new number. This lets you fold Speaker 3 into Speaker 1; typing the same name for two voices does the same.'],
+      ['built', 'Use these names', 'Rewrites the memo in place.']] }] },
+
+{ id: 'ask', group: 'Apps', name: 'Ask Mitra', via: 'Icon · Ctrl K',
+  why: 'One general question-and-answer model. The plan removes the two-minute give-up: a question waits in line and says so.',
+  states: [
+  { name: 'Empty', html: frame(APPWIN('Ask Mitra'), tb('Ask Mitra') + `<div class="body" style="align-content:end;min-height:380px"><div class="m" style="text-align:center" data-pin="1">Qwen3 0.6B · runs on this device · 564 MB while answering, nothing after</div>
+    <div class="row"><div class="in" style="flex:1;min-height:56px" data-pin="2">Ask anything. Enter sends, Shift+Enter makes a new line.</div><span class="b p">Ask</span></div></div>`),
+    notes: [['built', 'What will answer', 'Model and cost, stated before you ask.'], ['built', 'Question box', 'Enter sends.']] },
+  { name: 'Answer', html: frame(APPWIN('Ask Mitra'), tb('Ask Mitra') + `<div class="body" style="align-content:end;min-height:380px"><div class="row"><span class="sp"></span><span class="b g" data-pin="1">New conversation</span></div>
+    <div class="bubble q t">What is a good structure for a vendor review?</div>
+    <div class="bubble" data-pin="2">${ln(100, 94, 97, 60)}<div class="row" style="margin-top:8px"><span class="m mono" data-pin="3">Qwen3 0.6B · 18 s · 531 MB</span><span class="sp"></span><span class="b g">Copy</span></div></div>
+    <div class="row"><div class="in" style="flex:1">Ask a follow-up</div><span class="b p">Ask</span></div></div>`),
+    notes: [['built', 'New conversation', 'Clears the thread.'], ['built', 'Answer', 'The last few turns are sent with each question so the thread holds.'],
+      ['built', 'Cost of this answer', 'Model, seconds and peak memory. The pill is back to "no model loaded".']] },
+  { name: 'Waiting in line', isnew: 1, html: frame(APPWIN('Ask Mitra'), tb('Ask Mitra', 'Whisper medium · 972 MB · TwinMind', 1, 1) + `<div class="body" style="align-content:end;min-height:380px">
+    <div class="bubble q t">What is a good structure for a vendor review?</div>
+    <div class="nw" data-plan="A" data-pin="2"><div class="t"><b>Waiting for a turn.</b> TwinMind is on piece 7 of 24. Your question goes next, in about 1 min.</div>
+      <div class="row"><span class="pg"><i style="width:55%"></i></span><span class="m">38 s</span><span class="b g" data-pin="3">Cancel question</span></div></div>
+    <div class="row"><div class="in" style="flex:1" data-pin="4">You can type the next question while you wait</div><span class="b g">Ask</span></div></div>`),
+    notes: [['A', 'Who has the model', 'The pill names the model and the app using it.'],
+      ['A', 'A place in line, not a timeout', 'Longest waits, estimated: 67 s while speakers are being found, about 2 min during Accurate speech (about 1 min on Fast), about 21 s during notes. The bar tracks the current piece.'],
+      ['A', 'Cancel question', 'Leaves the line. Nothing else is affected.'],
+      ['A', 'Keep typing', 'The box stays usable; the next question is sent after this answer.']] }] },
+
+{ id: 'made', group: 'Apps', name: 'An app you created', via: 'Its own icon after Create',
+  why: 'A generic workspace until the app is given its own screen (APP_SPEC.md).',
+  states: [{ name: 'Workspace', html: frame(APPWIN('Supplier Quotes'), tb('Supplier Quotes') + `<div class="body"><div class="row"><div class="h1">Supplier Quotes</div><span class="pill" data-pin="1">Dropbox · Quotes</span></div>
+    <div class="cols" style="--c:1fr 1.6fr"><div class="bx" data-pin="2"><div class="h">Files in its folder</div>${ln(84, 70, 76, 58)}</div>
+    <div class="bx" style="min-height:240px" data-pin="3"><div class="h">Workspace</div>${ln(100, 92, 60)}<div class="m">Uses only the capabilities its manifest lists.</div></div></div></div>`),
+    notes: [['built', 'Connector', 'The folder named in the sentence that created it.'], ['built', 'Files', 'What is in that folder.'],
+      ['built', 'Workspace', 'Generic until replaced. Same top bar, same model rules, same log as built-in apps.']] }] },
+
+{ id: 'flow2h', group: 'How it behaves', name: 'A 2-hour call', via: 'Estimated from the 16-minute call. Not yet run.',
+  why: 'What the job looks like end to end at each speed, and where it can be stopped and resumed.',
+  states: [{ name: 'Timeline', isnew: 1, html: `<div class="frame"><div class="chrome"><span>2 h 02 min recording on this laptop · minutes</span></div><div class="body">
+    <div class="lane" data-pin="1"><b>Accurate</b><div><div class="track"><span class="f-a" style="width:33%">speakers 32</span><span class="f-b" style="width:51.5%">speech · Whisper medium 50</span><span class="f-c" style="width:15.5%">notes 15</span></div><div class="ticks" style="--tk:1.14%"></div></div></div>
+    <div class="m" style="text-align:right">about 97 min · 29 windows, 24 pieces, about 43 sections</div>
+    <div class="lane" data-pin="2"><b>Fast</b><div><div class="track" style="width:72%"><span class="f-a" style="width:45.7%">speakers 32</span><span class="f-b" style="width:32.9%">speech · small 23</span><span class="f-c" style="width:21.4%">notes 15</span></div></div></div>
+    <div class="m" style="text-align:right">about 70 min</div>
+    <div class="lane" data-pin="3"><b>Memory</b><div class="track"><span class="f-0" style="width:33%">200 MB</span><span class="f-0" style="width:51.5%">985 MB</span><span class="f-0" style="width:15.5%">950 MB</span></div></div>
+    <div class="lane" data-pin="4"><b>Stopped at 80 min</b><div><div class="track"><span class="f-a" style="width:33%">kept</span><span class="f-b" style="width:49%">kept · 23 pieces</span><span class="f-w" style="width:2.5%"></span><span class="f-q" style="width:15.5%">17 min left</span></div></div></div>
+    <div class="m" data-pin="5">On an 8 GB i5 with no GPU, expect 3 to 5 hours on Accurate. The memory figures do not change with length or device.</div></div></div>`,
+    notes: [['B', 'Accurate', 'Whisper medium. Each tick under the bar is a point where the work so far is on disk.'],
+      ['B', 'Fast', 'Whisper small for the speech stage only; speakers and notes are unchanged.'],
+      ['built', 'Memory is flat', 'Audio is handled in 5-minute pieces, so the peak is the same for 4 minutes or 2 hours.'],
+      ['A', 'A stop near the end', 'Today everything is lost. With checkpoints only the piece in progress is redone.'],
+      ['built', 'Other devices', 'Slower, not bigger. Times on each device come from its own log once it has run a job.']] }] },
+
+{ id: 'flow3', group: 'How it behaves', name: 'Three things at once', via: 'The rule: one model at a time, under 1 GB',
+  why: 'What happens when TwinMind is working and you use other apps. The rule is kept; what changes is that nobody is turned away.',
+  states: [{ name: 'Who waits for whom', isnew: 1, html: `<div class="frame"><div class="chrome"><span>ten minutes during the speech stage · left to right</span></div><div class="body">
+    <div class="lane" data-pin="1"><b>TwinMind</b><div class="track"><span class="f-b" style="width:21%">piece 7</span><span class="f-0" style="width:4%"></span><span class="f-b" style="width:21%">piece 8</span><span class="f-b" style="width:21%">piece 9</span><span class="f-0" style="width:4%"></span><span class="f-b" style="width:29%">piece 10</span></div></div>
+    <div class="lane" data-pin="2"><b>Ask Mitra</b><div class="track"><span class="f-0" style="width:9%"></span><span class="f-w" style="width:12%">waits</span><span class="f-q" style="width:4%">A</span><span class="f-0" style="width:28%"></span><span class="f-w" style="width:14%">waits</span><span class="f-q" style="width:4%">A</span><span class="f-0" style="width:29%"></span></div></div>
+    <div class="lane" data-pin="3"><b>Mitra PDF</b><div class="track"><span class="f-a" style="width:100%">reading, converting · no model · never waits</span></div></div>
+    <div class="lane" data-pin="4"><b>2nd recording</b><div class="track"><span class="f-w" style="width:100%">in the line · starts when the first memo is written</span></div></div>
+    <div class="bx" data-pin="5"><div class="h">The rules</div><table class="w"><tr><th>If you</th><th>while TwinMind is</th><th>then</th></tr>
+      <tr><td>read a PDF, a memo, or convert a document</td><td>at any stage</td><td>it works at once; no model is involved</td></tr>
+      <tr><td>ask Ask Mitra</td><td>finding speakers</td><td>answer starts within about 67 s</td></tr>
+      <tr><td>ask Ask Mitra</td><td>transcribing</td><td>within about 2 min (Accurate) or 1 min (Fast)</td></tr>
+      <tr><td>ask Ask Mitra</td><td>writing notes</td><td>within about 21 s; today this is blocked for the whole stage</td></tr>
+      <tr><td>add another recording</td><td>at any stage</td><td>it joins the line</td></tr>
+      <tr><td>close TwinMind or the laptop</td><td>at any stage</td><td>finished pieces are kept; resume later</td></tr></table></div>
+    <div class="bx lt" data-pin="6"><div class="t">Not in this plan: a second small model alongside (peak about 1.6 GB), GPU when present, processing during the call.</div></div></div></div>`,
+    notes: [['A', 'Gaps between pieces', 'The model is released at every piece boundary. If someone is waiting they take the gap; otherwise the next piece starts at once.'],
+      ['A', 'Questions jump the line', 'A question is short (about 18 s), so it goes before the next piece. Waits are estimates until measured.'],
+      ['built', 'Apps without a model', 'Unaffected, about 12 MB each. Models run below normal priority so screens stay responsive.'],
+      ['A', 'Recordings line up', 'One at a time. Two recordings never share the model.'],
+      ['A', 'The rules in one table', 'All of this is inside the limits you set: one model, 1 GB.'],
+      ['later', 'Plans C, D, E', 'Left out on purpose. Each relaxes a rule or is a much larger build.']] }] },
+];
+
+/* ---------- shell ---------- */
+const $ = s => document.querySelector(s);
+const side = $('#side'), main = $('#main'), notesEl = $('#notes');
+let cur = { id: 'all', st: 0 };
+const TAGS = { built: 'Built', A: 'New · A', B: 'New · B', new: 'New', later: 'Later' };
+
+function drawSide() {
+  let h = `<button data-go="all" aria-current="${cur.id === 'all'}">All screens</button>`, g = '';
+  for (const s of S) {
+    if (s.group !== g) { g = s.group; h += `<h4>${g}</h4>`; }
+    const n = s.states.filter(x => x.isnew).length;
+    h += `<button data-go="${s.id}" aria-current="${cur.id === s.id}"><span>${s.name}</span>${n ? `<em>${n} new</em>` : ''}</button>`;
+  }
+  side.innerHTML = h;
+}
+const legend = `<div class="legend"><span><i></i>Built in 0.8.0</span><span><i class="n"></i>New in 0.9.0 (the agreed plan), now built</span><span><i class="l"></i>Not built, not in this plan</span></div>`;
+
+function drawAll() {
+  main.innerHTML = `<div class="head"><h2>Every screen, and what the agreed plan changes</h2>
+    <p>Solid lines are what runs today. Saffron dashed blocks are new: plan A (a line of jobs, resume after a stop, the notes model stepping aside) and plan B (a speed choice per recording). All of it is built in 0.9.0. One difference from the drawing: there is no "Same person as" menu; giving two voices the same name merges them.</p></div>
+    <div style="margin-top:12px">${legend}</div>
+    <div class="plan">
+      <div><b>A · Line</b><p>Recordings and questions wait their turn. Nothing times out. Questions go ahead of the next piece.</p></div>
+      <div><b>A · Resume</b><p>Every 5-minute piece is saved when done. A stopped job picks up where it was.</p></div>
+      <div><b>A · Step aside</b><p>The notes model is released between sections so Ask Mitra is answered within seconds.</p></div>
+      <div><b>B · Speed</b><p>Accurate or Fast per recording, each with a time for that file on this device.</p></div>
+      <div><b>Added by me</b><p>"Same person as" in Who is who?, for voices renumbered on long calls. Say if you do not want it.</p></div>
+    </div>
+    <div class="ov">${S.map(s => `<button data-go="${s.id}"><div class="mini">${s.states[0].html}</div><b>${s.name}</b><span>${s.group} · ${s.states.length} state${s.states.length > 1 ? 's' : ''}${s.states.some(x => x.isnew) ? ' · changed by the plan' : ''}</span></button>`).join('')}</div>`;
+  notesEl.innerHTML = `<h3>How to read this</h3><ol>
+    <li><b>1</b><div><strong>Pick a screen</strong><p>From the list on the left or a tile. Up and Down arrows move between screens.</p></div></li>
+    <li><b>2</b><div><strong>Pick a state</strong><p>Most screens have several. Left and Right arrows step through them. Dashed chips are states the plan adds.</p></div></li>
+    <li><b>3</b><div><strong>Read the numbers</strong><p>Each numbered dot on the wireframe has a note here. Hover a note to find its dot.</p></div></li>
+    <li><b>4</b><div><strong>Narrow</strong><p>Shows the same screen at phone width, as on Android.</p></div></li></ol>`;
+}
+
+function drawScreen() {
+  const s = S.find(x => x.id === cur.id), state = s.states[cur.st] || s.states[0];
+  main.innerHTML = `<div class="head"><h2>${s.name}</h2><p>${s.why}</p><div class="via m">Reached by: ${s.via}</div></div>
+    <div class="states" role="group" aria-label="States">${s.states.map((x, i) => `<button data-st="${i}" class="${x.isnew ? 'isnew' : ''}" aria-pressed="${i === cur.st}">${x.name}</button>`).join('')}</div>
+    ${legend}<div class="stage-wrap" id="wrap">${state.html}</div>`;
+  notesEl.innerHTML = `<h3>${s.name} · ${state.name}</h3><ol>${state.notes.map((n, i) => `<li data-n="${i + 1}"><b>${i + 1}</b><div><strong>${n[1]}</strong><span class="tag ${n[0]}">${TAGS[n[0]]}</span>${n[2] ? `<p>${n[2]}</p>` : ''}</div></li>`).join('')}</ol>`;
+  applyView();
+}
+function draw() {
+  drawSide(); cur.id === 'all' ? drawAll() : drawScreen();
+  try { history.replaceState(null, '', '#' + cur.id + (cur.st ? '/' + cur.st : '')); } catch (e) {}
+}
+function go(id, st = 0) { cur = { id, st }; draw(); window.scrollTo({ top: 0 }); }
+function applyView() {
+  document.querySelectorAll('#wrap .frame').forEach(f => f.classList.toggle('narrow', view.narrow));
+  $('#wrap') && $('#wrap').classList.toggle('nopins', !view.pins);
+}
+const view = { narrow: false, pins: true };
+
+document.addEventListener('click', e => {
+  const g = e.target.closest('[data-go]'); if (g) return go(g.dataset.go);
+  const t = e.target.closest('[data-st]'); if (t) { cur.st = +t.dataset.st; draw(); }
+});
+notesEl.addEventListener('mouseover', e => hot(e.target.closest('li[data-n]')));
+notesEl.addEventListener('mouseout', () => hot(null));
+main.addEventListener('mouseover', e => { const p = e.target.closest('[data-pin]'); hot(p ? notesEl.querySelector(`li[data-n="${p.dataset.pin}"]`) : null); });
+function hot(li) {
+  document.querySelectorAll('.hot').forEach(x => x.classList.remove('hot'));
+  if (!li) return; li.classList.add('hot');
+  const p = main.querySelector(`[data-pin="${li.dataset.n}"]`); if (p) p.classList.add('hot');
+}
+$('#vwD').onclick = () => setW(false); $('#vwN').onclick = () => setW(true);
+function setW(n) { view.narrow = n; $('#vwD').setAttribute('aria-pressed', !n); $('#vwN').setAttribute('aria-pressed', n); applyView(); }
+$('#pins').onclick = e => { view.pins = !view.pins; e.target.textContent = view.pins ? 'Notes on' : 'Notes off'; e.target.setAttribute('aria-pressed', view.pins); applyView(); };
+$('#theme').onclick = () => {
+  const r = document.documentElement, dark = r.dataset.theme ? r.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme:dark)').matches;
+  r.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('mitra-wf-theme', r.dataset.theme); } catch (e) {}
+};
+try { const t = localStorage.getItem('mitra-wf-theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea') || e.ctrlKey || e.metaKey || e.altKey) return;
+  const ids = ['all', ...S.map(s => s.id)], i = ids.indexOf(cur.id), s = S.find(x => x.id === cur.id);
+  if (e.key === 'ArrowDown' && i < ids.length - 1) { e.preventDefault(); go(ids[i + 1]); }
+  if (e.key === 'ArrowUp' && i > 0) { e.preventDefault(); go(ids[i - 1]); }
+  if (s && e.key === 'ArrowRight' && cur.st < s.states.length - 1) { cur.st++; draw(); }
+  if (s && e.key === 'ArrowLeft' && cur.st > 0) { cur.st--; draw(); }
+});
+const m = location.hash.slice(1).split('/');
+if (m[0] && (m[0] === 'all' || S.some(s => s.id === m[0]))) cur = { id: m[0], st: +m[1] || 0 };
+draw();
+</script>
+</body>
+</html>

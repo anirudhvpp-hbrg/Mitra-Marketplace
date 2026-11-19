@@ -1,0 +1,15 @@
+[package]
+name = "mitra-governor"
+version = "0.1.0"
+edition = "2021"
+description = "Mitra's resource governor: every local model runs under it, one at a time, inside a RAM budget."
+
+[dependencies]
+sysinfo = { version = "0.32", default-features = false, features = ["system"] }
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+panic = "abort"

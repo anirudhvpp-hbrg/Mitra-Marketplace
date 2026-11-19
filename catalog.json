@@ -1,0 +1,50 @@
+{
+  "_about": "Capabilities, not models. An app says what it needs (\"assistant\", \"transcription\"); Mitra picks the first candidate that is on this device and fits model_budget_mb. Candidates are folder names inside models_dir, best first. Most apps need no model at all. est_mb is the RAM the governor measured on CPU unless marked 'estimate'; each model is stopped if it goes more than about 10% over its own est_mb.",
+  "assistant": {
+    "purpose": "The one general model: you ask, it answers.",
+    "runtime": "llama-server",
+    "candidates": [
+      {"id": "qwen3-0.6b-q4_k_m", "est_mb": 600, "why": "Fewer wrong answers than the two smaller candidates below. Measured 564 MB on 2026-11-13 with an 8-bit context cache, a 1536-token context and weight repacking off (881 MB before any tuning, 762 MB with repacking on)."},
+      {"id": "lfm2.5-350m-q4_k_m", "est_mb": 420, "why": "Measured 415 to 447 MB; used where the ceiling is below 750 MB. Makes occasional factual errors."},
+      {"id": "gemma-3-270m-it-q4_k_m", "est_mb": 340, "why": "Measured 333 MB; smallest fallback, noticeably weaker answers."}
+    ]
+  },
+  "meeting-notes": {
+    "purpose": "Notes, decisions and action items from a meeting transcript, section by section.",
+    "runtime": "llama-server",
+    "candidates": [
+      {"id": "gemma-3-1b-it-q4_k_m", "est_mb": 950, "contract": "generic", "why": "Gemma 3 1B (769 MB file). Measured 915 to 945 MB on two real calls on 2026-11-13 with weight repacking off (946 to 996 MB with it on). On those calls it wrote concrete points and real action items (share the proposal with the client by Wednesday; schedule a discovery session) where Qwen3 0.6B repeated transcript lines; it still misattributes some statements. Needs the 1 GB ceiling."},
+      {"id": "gemma-3-1b-it-q4_0", "est_mb": 850, "contract": "generic", "why": "The same model in a smaller file (688 MB). Measured 830 MB. Its notes on the same call were thinner than the Q4_K_M file's; used where the ceiling is between 860 and 940 MB. Not copied into the package."},
+      {"id": "qwen3-0.6b-q4_k_m", "est_mb": 600, "contract": "generic", "why": "Measured 564 MB. Fine on a clean written transcript; on real calls it repeats transcript lines as notes and tasks. Used where the ceiling is below 860 MB, or when the larger model is refused memory."},
+      {"id": "gemma-3-270m-mitra-ear", "est_mb": 370, "contract": "mind-v1", "why": "Your Mitra Ear fine-tune, trained on your meetings. Measured 361 MB; good titles and points, but it stated one decision wrongly and found one action of four. Used where the ceiling is below 760 MB."}
+    ]
+  },
+  "transcription": {
+    "purpose": "Speech to text.",
+    "runtime": "whisper.cpp",
+    "candidates": [
+      {"id": "whisper-medium-q5_0-cpp", "est_mb": 985, "args": ["-bs", "1", "-bo", "1"], "why": "Whisper medium, 99 languages, 5-bit weights (514 MB file, made from ggml-medium.bin with whisper-quantize). Measured 934 to 980 MB on real calls with greedy decoding; with the default beam of 5 it needs 1,234 to 1,268 MB, over the ceiling, for the same text. Clearly more accurate than small on that call and about 2.6 times slower (108 s against 41 s). Needs the 1 GB ceiling."},
+      {"id": "whisper-small-q5_1-cpp", "est_mb": 640, "why": "Whisper small, 99 languages, 5-bit weights (181 MB file). Measured 605 MB on a real 4-minute phone call that moves between Hindi and English, on 2026-11-12: names, dates and the deadline came out right, where the tiny model produced nonsense. Writes English whatever is spoken."},
+      {"id": "whisper-base-q5_1-cpp", "est_mb": 380, "why": "Whisper base, 99 languages (57 MB file). Measured 356 MB on the same call; follows the conversation but gets names and weekdays wrong. Used where the ceiling is below 640 MB."},
+      {"id": "whisper-tiny-multilingual", "est_mb": 370, "why": "Measured 345 MB on the same call; unusable on mixed Hindi and English. Last resort."},
+      {"id": "whisper-tiny-en-cpp", "est_mb": 310, "why": "English only. Measured 283 MB on a real 4-minute call (150 MB on a 40-second clip, which is what the earlier 180 was based on, and why a real call was stopped). Last resort."}
+    ]
+  },
+  "diarization": {
+    "purpose": "Who spoke when.",
+    "runtime": "audio.cpp",
+    "candidates": [
+      {"id": "nemotron-3-diarization-audiocpp", "est_mb": 200, "why": "NVIDIA Sortformer, up to eight speakers, 102 MB Q8 GGUF in the format audio.cpp loads. Run in streaming mode on windows of five minutes: measured 150 MB at 30 seconds, 165 at 3 minutes, 181 at 6 (252 for 4 minutes in offline mode, which is why a real call was stopped under the earlier 180). About 12 seconds per minute of audio on this CPU. Its runtime also reserves about 3.2 GB of virtual memory at start without using it; Windows must be able to promise that much."}
+    ]
+  },
+  "voice-activity": {
+    "purpose": "Find speech segments so silence is never transcribed.",
+    "runtime": "onnxruntime",
+    "candidates": [{"id": "onnx-community--silero-vad", "est_mb": 60, "why": "2 MB model; estimate."}]
+  },
+  "embeddings": {
+    "purpose": "Semantic search over your files and memory log.",
+    "runtime": "onnxruntime",
+    "candidates": [{"id": "snowflake-arctic-embed-m-onnx", "est_mb": 250, "why": "ONNX, no PyTorch needed; estimate."}]
+  }
+}

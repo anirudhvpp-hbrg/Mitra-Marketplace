@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Anything to Markdown</title>
+<link rel="stylesheet" href="/static/mitra.css">
+<style>
+  .tools { display: flex; gap: 8px; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--bg); z-index: 5; flex-wrap: wrap; }
+  .tools .name { flex: 1; font-weight: 600; min-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #drop { margin: 10px; padding: 14px; border: 2px dashed var(--line); border-radius: 10px; text-align: center; color: var(--muted); font-size: 13px; cursor: pointer; }
+  #drop.over { border-color: var(--accent); color: var(--ink); }
+  #raw { width: 100%; height: calc(100vh - 110px); border: 0; border-radius: 0; padding: 20px; background: var(--bg); }
+</style>
+</head>
+<body>
+<div class="split">
+  <aside>
+    <div id="drop">Drop a file anywhere in this window, or click to choose one<input type="file" id="pick" hidden></div>
+    <div id="files"></div>
+  </aside>
+  <main>
+    <div class="tools" hidden id="tools"><span class="name" id="name"></span><span class="muted small" id="stat"></span>
+      <button id="toggle">Edit source</button><button id="copy">Copy</button><button class="primary" id="save">Save .md</button></div>
+    <div class="empty" id="empty">Pick or drop a file to convert it.<div class="small" id="formats" style="margin-top:10px"></div></div>
+    <article class="md" id="view" hidden></article>
+    <textarea id="raw" hidden spellcheck="false" aria-label="Markdown source"></textarea>
+  </main>
+</div>
+<script src="/static/sdk.js"></script>
+<script>
+const M = mitra, $ = (s) => document.querySelector(s);
+let doc = null, editing = false, browser = null;
+function show() {
+  if (!editing) $('#view').innerHTML = M.md($('#raw').value, doc.dir);
+  $('#view').hidden = editing; $('#raw').hidden = !editing; $('#toggle').textContent = editing ? 'Preview' : 'Edit source';
+}
+function loaded(r, ms) {
+  doc = r; editing = false; $('#empty').hidden = true; $('#tools').hidden = false;
+  $('#name').textContent = r.name; $('#raw').value = r.markdown;
+  $('#stat').textContent = `${r.markdown.length.toLocaleString()} characters · ${ms} ms`;
+  show(); M.log('action.convert', { ext: (r.name.match(/\.[^.]+$/) || [''])[0].toLowerCase(), chars: r.markdown.length, ms });
+}
+// name is given for a dropped file: the path is then a temporary copy, so Save writes to Downloads, not beside it
+async function convertPath(p, name) {
+  const t0 = performance.now(); $('#stat').textContent = 'Converting…';
+  try {
+    const r = await M.api('/api/convert?path=' + encodeURIComponent(p));
+    loaded(name ? { ...r, name, path: null, dir: null } : r, Math.round(performance.now() - t0));
+  } catch (e) { M.toast(e.message, 6000); }
+}
+$('#toggle').onclick = () => { editing = !editing; show(); };
+$('#copy').onclick = () => navigator.clipboard.writeText($('#raw').value).then(() => { M.toast('Markdown copied'); M.log('action.copy'); });
+$('#save').onclick = async () => {
+  try {
+    const r = await M.api('/api/convert/save', { body: { markdown: $('#raw').value, source: doc.path, name: doc.name } });
+    M.log('action.save', { path: r.saved });
+    $('#stat').innerHTML = `Saved as ${M.esc(r.saved.split(/[\\/]/).pop())} · <a href="/apps/markdown-reader/?path=${encodeURIComponent(r.saved)}">Open in Markdown Reader</a>`;
+    M.toast('Saved ' + r.saved, 5000);
+    if (browser && doc.dir) browser.go(doc.dir);   // show the new file in the list
+  } catch (e) { M.toast(e.message); }
+};
+const drop = $('#drop');
+drop.onclick = () => $('#pick').click();
+$('#pick').onchange = (e) => e.target.files[0] && M.openFile(e.target.files[0]);
+M.accept = { exts: null, open: convertPath };   // anything dropped anywhere in this window is converted here
+M.ready.then(async () => {
+  M.api('/api/convert/formats').then((f) => ($('#formats').textContent = 'Reads: ' + f.filter((x) => x.length <= 6).join(' ')));
+  const start = M.param('path'), dropped = M.param('name');
+  browser = await M.browser($('#files'), { onPick: (p) => convertPath(p), start: start && !dropped ? start.replace(/[\\/][^\\/]*$/, '') : null });
+  if (start) { if (!dropped) browser.select(start); convertPath(start, dropped); }
+});
+</script>
+</body>
+</html>

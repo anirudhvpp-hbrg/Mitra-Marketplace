@@ -1,0 +1,17 @@
+{
+  "id": "pdf-reader",
+  "name": "Mitra PDF",
+  "tagline": "Read and search PDFs",
+  "glyph": "pdf",
+  "category": "Documents",
+  "version": "0.9.0",
+  "description": "Read PDFs in the browser's own viewer, or as extracted text when you want to search and copy.",
+  "connectors": [],
+  "needs": [],
+  "uses": [
+    "convert"
+  ],
+  "opens": [
+    ".pdf"
+  ]
+}
