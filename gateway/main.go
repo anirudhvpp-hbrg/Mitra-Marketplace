@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-const version = "0.9.0"
+const version = "0.10.0"
 
 var (
 	root, home   string
@@ -476,6 +476,7 @@ func routes() http.Handler {
 
 	processRoutes(mux)
 	fileRoutes(mux)
+	meetRoutes(mux)
 	mux.HandleFunc("POST /api/log", func(w http.ResponseWriter, r *http.Request) {
 		var e struct {
 			App, Type, Session string

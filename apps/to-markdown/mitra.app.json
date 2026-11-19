@@ -4,7 +4,7 @@
   "tagline": "Any file into Markdown",
   "glyph": "convert",
   "category": "Documents",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Convert PDF, Word, PowerPoint, Excel, HTML, CSV, EPUB, notebooks and code into clean Markdown, and save it beside the original.",
   "connectors": [],
   "needs": [],

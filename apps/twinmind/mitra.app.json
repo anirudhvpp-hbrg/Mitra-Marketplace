@@ -4,7 +4,7 @@
   "tagline": "Meetings into memos",
   "glyph": "mic",
   "category": "Meeting Intelligence",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Turn a recording or transcript into a memo: the gist, decisions, action items with owners, and the transcript with speakers, saved to Dropbox.",
   "connectors": [
     {
@@ -28,7 +28,7 @@
   "output": {
     "format": "markdown"
   },
-  "uses": [],
+  "uses": ["meetings"],
   "opens": [
     ".wav",
     ".mp3",

@@ -24,7 +24,7 @@ import traceback
 from datetime import datetime
 from pathlib import Path
 
-from mitra_workers import convert, gist, library, meeting, memory, models, paths, work
+from mitra_workers import convert, gist, library, live, meeting, memory, models, paths, work
 
 AUDIO = {".wav", ".mp3", ".m4a", ".mp4", ".ogg", ".flac", ".webm", ".aac"}
 _DAY = r"monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|tonight|end of|next week|eod"
@@ -218,7 +218,8 @@ def _item(b: dict) -> dict:
         raise ValueError(f"Not found: {src}")
     return {"path": str(src), "name": b.get("name") or src.name, "title": (b.get("title") or "").strip(),
             "attendees": (b.get("attendees") or "").strip(), "speed": "fast" if b.get("speed") == "fast" else "accurate",
-            "fresh": bool(b.get("fresh")), "added": time.time()}
+            "fresh": bool(b.get("fresh")), "added": time.time(),
+            **({"tracks": b["tracks"]} if isinstance(b.get("tracks"), dict) else {}), **({"my_notes": str(b["my_notes"])} if b.get("my_notes") else {})}
 
 
 def _work_for(item: dict) -> work.Work:
@@ -415,6 +416,13 @@ def process(item: dict, job, w) -> dict:
             job.step("diarize", "running", "Sortformer")
             begin("diarize")
             turns = models.diarize("twinmind", wav, progress=lambda m: job.step("diarize", "running", m), work=w)
+            if item.get("tracks"):
+                mine = live.owner_speaker(turns, Path(item["tracks"]["mic"]), Path(item["tracks"]["sys"]))
+                if mine:
+                    me = live.owner()
+                    for t in turns:
+                        if t["speaker"] == mine:
+                            t["speaker"] = me
             who = len({t["speaker"] for t in turns})
             stages["diarize"] = f"{models.pick('diarization')['model']}, {who} speaker{'s' if who != 1 else ''}, {len(turns)} turns"
             job.step("diarize", "done", stages["diarize"])
@@ -556,6 +564,8 @@ def process(item: dict, job, w) -> dict:
            "_Quoted word for word from the transcript._"]
     if notes and notes["topics"]:
         md += ["", "**Topics covered:** " + "; ".join(notes["topics"])]
+    if item.get("my_notes", "").strip():
+        md += ["", "## Your notes", "", item["my_notes"].strip(), "", "_Typed by you during the meeting, kept as written._"]
     md += ["", f"## {H_POINTS}", ""]
     if notes:
         shown = 0
@@ -692,6 +702,86 @@ def across(req):
             "rows": [{k: e[k] for k in ("id", "date", "title", "minutes")} | {"has_summary": bool(e["summary_path"])} for e in rows[:400]]}
 
 
+# ---- a meeting as it happens -----------------------------------------------------------------
+class _Shim:
+    """What `run` needs of a request, for a recording that came from the recorder and not from the page."""
+    def __init__(self, job, body):
+        self.job, self._body = job, body
+
+    def json(self):
+        return self._body
+
+
+def _memo_for(job, d: Path, title: str, attendees: str, req):
+    files = live.assemble(d, title)
+    notes_file = d / "notes.md"
+    body = {"path": files["mix"], "name": (title or "Meeting") + " (recorded live)", "title": title, "attendees": attendees, "speed": "accurate",
+            "tracks": {"mic": files["mic"], "sys": files["sys"]}, "my_notes": notes_file.read_text("utf-8") if notes_file.is_file() else ""}
+    shim = _Shim(job, body)
+    out = run(shim)
+    req.job = shim.job
+    return out
+
+
+def live_job(req):
+    """Record a meeting until it is stopped, with a transcript that grows as it goes; then write the memo."""
+    b = req.json()
+    if live.current():
+        return {"already": True}
+    live.tidy()
+    title, attendees = (b.get("title") or "").strip(), (b.get("attendees") or "").strip()
+    rec = live.record("twinmind", req.job, title, attendees)
+    d = Path(rec["dir"])
+    meta = json.loads((d / "meeting.json").read_text("utf-8"))        # the title may have been typed during the meeting
+    if rec["seconds"] < 5:
+        return {"recorded": False, "why": "The recording was stopped before anything was captured."}
+    return _memo_for(req.job, d, meta.get("title") or title, meta.get("attendees") or attendees, req)
+
+
+def live_finish(req):
+    """Write the memo for a recording that ended without one (the app was closed during the meeting)."""
+    rid = re.sub(r"[^0-9\-]", "", str(req.json().get("id") or ""))
+    d = live.LIVE / rid
+    if not rid or not d.is_dir() or (live.current() or {}).get("id") == rid:
+        raise ValueError("No such recording.")
+    meta = json.loads((d / "meeting.json").read_text("utf-8"))
+    return _memo_for(req.job, d, meta.get("title") or "", meta.get("attendees") or "", req)
+
+
+def live_state(req):
+    """Is a meeting being recorded, how far along, and the new lines of its transcript."""
+    cur = live.current()
+    out = {"recording": cur, "owner": live.owner(), "model": live.live_model().get("model"), "leftover": live.unassembled(),
+           "recorder": Path(live.EAR).is_file()}
+    if cur:
+        out.update(live.tail(cur["id"], int(req.q("after") or 0)))
+    return out
+
+
+def live_stop(req):
+    cur = live.current()
+    if not cur:
+        return {"stopped": False}
+    (Path(cur["dir"]) / "stop").write_text("", "utf-8")
+    memory.log("twinmind", "live.stop", {"id": cur["id"]})
+    return {"stopped": True}
+
+
+def live_notes(req):
+    """What you type during the meeting, and its title: kept beside the recording and put in the memo."""
+    cur, b = live.current(), req.json()
+    if not cur:
+        return {"saved": False}
+    d = Path(cur["dir"])
+    if "notes" in b:
+        (d / "notes.md").write_text(str(b["notes"])[:20000], "utf-8")
+    if "title" in b or "attendees" in b:
+        meta = json.loads((d / "meeting.json").read_text("utf-8"))
+        meta.update({k: str(b[k]).strip()[:200] for k in ("title", "attendees") if k in b})
+        (d / "meeting.json").write_text(json.dumps(meta, ensure_ascii=False), "utf-8")
+    return {"saved": True}
+
+
 def _memo(path: str) -> Path:
     """A memo path from the page, accepted only if it is a .md file inside this app's folder."""
     f = Path(path).resolve()
@@ -742,4 +832,6 @@ ROUTES = {("GET", "status"): status, ("GET", "meetings"): meetings, ("GET", "sea
           ("GET", "speakers"): speakers, ("POST", "speakers"): name_speakers, ("GET", "estimate"): estimate, ("GET", "state"): state,
           ("POST", "line"): set_line, ("POST", "pause"): pause, ("POST", "stop"): stop, ("POST", "discard"): discard,
           ("GET", "library"): lib_list, ("GET", "meeting"): lib_meeting, ("POST", "meta"): lib_meta, ("GET", "inside"): lib_inside,
-          ("GET", "people"): people, ("POST", "people"): set_people, ("GET", "across"): across}
+          ("GET", "people"): people, ("POST", "people"): set_people, ("GET", "across"): across,
+          ("POST", "job/live"): live_job, ("POST", "job/live-finish"): live_finish, ("GET", "live"): live_state,
+          ("POST", "live/stop"): live_stop, ("POST", "live/notes"): live_notes}

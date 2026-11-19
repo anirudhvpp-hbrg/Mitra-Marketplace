@@ -9,6 +9,11 @@ Copy-Item "target\release\mitra-governor.exe" "$root\bin\" -Force
 Copy-Item "target\release\mitra-open.exe" "$root\bin\" -Force   # windowless handler for files opened from Explorer
 Pop-Location
 
+Push-Location "$root\ear"
+cargo build --release
+Copy-Item "target\release\mitra-ear.exe" "$root\bin\" -Force     # records the microphone and system audio as two tracks
+Pop-Location
+
 Push-Location "$root\gateway"
 go build -ldflags "-s -w" -o "$root\bin\mitra-marketplace.exe" .
 Pop-Location

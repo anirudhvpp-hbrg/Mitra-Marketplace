@@ -1,6 +1,6 @@
 # What Mitra took from APTM (Mitra Ear)
 
-APTM was the earlier local meeting app at `C:\Users\aniru\Desktop\APTM` (Mitra Ear 1.2, October 2026). On 2026-11-11 its portable capabilities were moved into Mitra Marketplace and the folder was sent to the Recycle Bin. The complete source, docs, tests, bake-off results and packaging scripts are kept in `aptm-source-2026-11-11.zip` beside this file (93 files; compiled `.pyc` files and logs left out), so nothing that was not ported is lost.
+APTM was the earlier local meeting app at `C:\Users\<you>\Desktop\APTM` (Mitra Ear 1.2, October 2026). On 2026-11-11 its portable capabilities were moved into Mitra Marketplace and the folder was sent to the Recycle Bin. The complete source, docs, tests, bake-off results and packaging scripts are kept in `aptm-source-2026-11-11.zip` beside this file (93 files; compiled `.pyc` files and logs left out), so nothing that was not ported is lost.
 
 ## Absorbed and working
 

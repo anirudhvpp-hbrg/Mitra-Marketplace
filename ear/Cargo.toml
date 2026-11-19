@@ -1,0 +1,18 @@
+[package]
+name = "mitra-ear"
+version = "0.1.0"
+edition = "2021"
+description = "Mitra's ear: records the microphone and what the computer is playing, as two tracks, in short saved pieces."
+
+[dependencies]
+cpal = "0.15"
+serde_json = "1"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+panic = "abort"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.54", features = ["Win32_Foundation", "Win32_Media_Audio", "Win32_System_Com", "Win32_System_Threading"] }

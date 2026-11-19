@@ -2,7 +2,7 @@
 
 A suite of small, private apps that run entirely on your own computer. Type `mitra-marketplace` in any terminal: a welcome screen opens, and behind it are your apps as icons. Each app is its own program, started when you click its icon and gone a few seconds after you close its window. Nothing leaves the device. Local AI models are loaded only for the request that needs them, one at a time, inside a 1 GB memory ceiling.
 
-Version 0.9.0, with 0.10.0 in progress. Built and tested on Windows 11; macOS, Linux and Android Termux are design targets that have not been run yet.
+Version 0.10.0. Built and tested on Windows 11; macOS, Linux and Android Termux are design targets that have not been run yet.
 
 - [What works and what does not](#what-works-and-what-does-not)
 - [The apps](#the-apps)
@@ -33,8 +33,8 @@ This table is the honest state on 2026-11-20. "Tested" means run by the automate
 | TwinMind: a recording or transcript in, a memo out | Works end to end, including a 2 h 25 min call with pause, hard stop and resume. **The memo of a long meeting is not good enough**: it is a list of short section notes, not a summary of the meeting |
 | TwinMind: meeting library (old and new meetings, tags, projects, search inside, across-meetings view, people list) | Built 2026-11-14. Its own tests pass and the page was checked against a real archive of 2,597 transcripts. The full suite has not been rerun since |
 | TwinMind: names spelt right | A people list is given to the speech model and wrong spellings are replaced. Tested on text; not yet proven on real audio |
-| **TwinMind: notice a meeting and offer to record it** | **Not built** |
-| **TwinMind: live transcript during a meeting** | **Not built** |
+| TwinMind: notice a meeting and offer to record it | Built 2026-11-20, Windows only, and only while TwinMind is open. Tested with a stand-in call app; not yet seen with a real Teams or Zoom call |
+| TwinMind: record a meeting and show the transcript as it runs | Built 2026-11-20. Checked end to end with two minutes of synthesized speech; **not yet run on a real meeting or for hours**. The live model is provisional and misspells names |
 | **TwinMind: a true whole-meeting summary; questions across meetings; your own notes merged in; templates; calendar preparation** | **Not built** |
 | macOS, Linux, Android Termux | Not built or run |
 
@@ -89,6 +89,7 @@ Four languages, each where it fits:
 |---|---|---|---|
 | Launcher, each app's process, the command-line tool | Go | One small static binary that starts in about 110 ms and holds about 12 MB | `gateway/` |
 | Memory governor, the windowless file handler | Rust | Must be tiny, exact about memory, and present only while a model runs | `governor/` |
+| The recorder (microphone and system audio, two tracks) | Rust | Must run for hours in about 12 MB and never lose what it has heard | `ear/` |
 | The work itself: conversion, the meeting pipeline, the library, reports, the app builder | Python | Runs as a fresh process per request (28 to 38 MB) and exits, so nothing stays in memory | `workers/mitra_workers/` |
 | Screens | JavaScript, HTML, CSS | No framework and no build step; a screen is one HTML file | `web/`, `apps/*/ui/` |
 
@@ -159,6 +160,19 @@ That call took about 2 hours of work on the development laptop for 2 hours 25 mi
 - **Speed.** Accurate (Whisper medium) or Fast (the next model down) per recording, with a time estimate for that file that is replaced by this device's own figures after its first finished job.
 - **Stepping aside.** The notes model is released between sections when another app is waiting. On the real call a question in Ask Mitra waited 54 s during the speaker stage, 189 s during speech and 22 s during notes, and was answered each time.
 
+### A meeting as it happens (0.10.0)
+
+| Step | How |
+|---|---|
+| **Noticing a meeting** | While TwinMind's window is open it asks its own process every five seconds which programs are recording from a microphone. The answer comes from Windows' audio sessions, read by `mitra-ear who`; nothing is listened to. If one of them is a call app (Teams, Zoom, Webex, Slack, WhatsApp, a browser and so on) a banner asks "Do you want me to record it?", with "Not this one". Someone talking near the laptop is not a meeting, and neither is a dictation tool. Nothing watches when Mitra is closed |
+| **Recording** | `mitra-ear` (Rust, about 12 MB, no model) records two tracks at 16 kHz: your microphone, and whatever the computer plays, which in a call is everyone else. Nothing joins the call. Each track is written in half-minute pieces under a temporary name and renamed when complete, so a crash loses at most the half minute in hand, and both tracks follow the wall clock so piece N covers the same half minute on each |
+| **The transcript as it grows** | Each finished piece goes through the smallest multilingual speech model (Whisper base, about 2 s per piece, 356 MB while it runs, nothing between pieces). A silent piece runs no model. A line that runs into the end of a piece is held back and heard whole with the next one. Lines are marked with your name or "Others" by track |
+| **Your notes** | A box beside the transcript; what you type is saved as you go and put in the memo as written |
+| **When you stop** | The pieces are put together into one recording per track and a mix, and the full pipeline writes the memo: speakers, the accurate speech model, notes, the check. The speaker heard on the microphone track is named as you. Recordings are kept 30 days (`keep_recordings_days`), then go to the Recycle Bin |
+| **If the app is closed mid-meeting** | The recorder ends cleanly and the Live tab offers "Write its memo" next time |
+
+Memory is flat for any length: one piece is handled at a time and everything so far is on disk. Checked on 2026-11-20 with a two-minute recording of synthesized speech played through the speakers: both tracks recorded, every sentence in the live transcript after two faults were fixed (an invented "Thank you" from the silent microphone track, and a sentence lost at a piece boundary), and a correct memo with the typed note in it. **Not yet run on a real meeting, on a real voice at the microphone, or for hours**; the live speech model is a provisional choice that gets names wrong (the memo's model does not).
+
 ### The meeting library
 
 - **Meetings.** Every meeting in one list: the memos TwinMind wrote and a read-only archive of transcripts named by `meeting_archive` in the settings (Markdown files with front matter giving date, title, client and speakers). Filter by project, year, or whether a summary exists; search titles and people, or search inside every transcript.
@@ -188,7 +202,7 @@ Needs Go, Rust (cargo) and Python 3.10 or later.
 sh build.sh
 ```
 
-This builds `bin/mitra-marketplace`, `bin/mitra-governor` and `bin/mitra-open`. Add `bin` to your PATH, set up the models and runtimes as above, then:
+This builds `bin/mitra-marketplace`, `bin/mitra-governor`, `bin/mitra-open` and `bin/mitra-ear`. Add `bin` to your PATH, set up the models and runtimes as above, then:
 
 ```
 mitra-marketplace
@@ -238,6 +252,7 @@ Moving between machines: `push` packs code and binaries (about 10 MB) into a sha
 | `assistant_ctx` | 1536 | Context length for the language models |
 | `transcribe_language` | `english` | `english` (write everything in English), `original`, or a code such as `hi` |
 | `meeting_archive` | none | A folder of old transcripts for TwinMind's library, read only |
+| `keep_recordings_days` | 30 | How long live recordings are kept before they go to the Recycle Bin |
 | `app_window` | `window` | `window`, `tab` or `none` |
 | `app_idle_exit_s` | 150 | An app with no window ends after this long |
 | `idle_exit_min` | 10 | The launcher's idle exit |
@@ -262,6 +277,7 @@ Every process appends one line per event to `~/.mitra/memory/events/<date>.jsonl
 | L | Real models: answers, notes, three models in sequence |
 | O | Saved pieces, pause, stop and resume, the line of recordings, stepping aside |
 | P | The meeting library: an archive listed and filtered, tags kept outside it, search inside, names put right |
+| Q | Live meetings: who is using the microphone, a call app noticed and un-noticed, two tracks in equal pieces, a line carried across a piece boundary, invented phrases dropped, tracks put together, the Live tab |
 
 Last full run: 343 of 343 on 2026-11-14 (version 0.9.0). Nine library cases were added afterwards and pass; the full suite has not been rerun with them. A passing suite has let a broken product through before (the automated recordings are synthesized speech), so audio changes are also run on a real recording and the memo read. `TEST_PLAN.md` records every run, every failure and what each one turned out to be.
 
@@ -270,6 +286,7 @@ Last full run: 343 of 343 on 2026-11-14 (version 0.9.0). Nine library cases were
 ```
 gateway/             Go: launcher, app process, commands, file types, releases
 governor/            Rust: the memory governor and the windowless file handler
+ear/                 Rust: the recorder (two tracks in saved pieces) and "who is using the microphone"
 workers/             Python: mitra_workers/ (the work each request does)
 web/                 the launcher page, sdk.js (shared by every app), mitra.css, the logo
 apps/                pdf-reader · markdown-reader · to-markdown · twinmind · assistant
@@ -289,7 +306,7 @@ on your device:         ~/.mitra/  config.json · apps/ (yours) · memory/ · ru
 
 In this order:
 
-1. **Live meetings.** While Mitra is open, notice that a meeting app is using the microphone and ask whether to record; capture microphone and system audio in saved pieces; show the transcript as the meeting runs; write the memo when it ends. Sized for meetings of two to three hours.
+1. **Live meetings, proven.** Built in 0.10.0. Still to do: a real meeting of two to three hours recorded and read; a survey of every candidate for the live speech model on at least a hundred held-out cases, so names come out right in the running transcript too; a notification when TwinMind's window is not in front.
 2. **A real summary.** One summary of the whole meeting above the section notes, built from them, with decisions, owners and dates.
 3. **Ask your meetings.** A question answered from one meeting or across all of them, with the meeting and the line cited.
 4. **Parity with the commercial meeting apps.** Your own notes taken during the meeting merged into the summary; templates and saved prompts; people and company views; preparation from the calendar.

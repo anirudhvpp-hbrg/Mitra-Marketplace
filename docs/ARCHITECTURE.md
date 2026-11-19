@@ -103,7 +103,7 @@ Every model process is started by `bin/mitra-governor.exe`, never directly.
 - **Priority.** Models run below normal priority, on CPU, so the footprint is the same on every device.
 - **Housekeeping.** Clears a lock left by a crash; `mitra-marketplace optimize` runs at start and every six hours.
 
-`bin/mitra-open.exe` is a second small Rust program (316 KB): Windows starts it when you open a file from Explorer, and it starts the right app with no console window flashing.
+`bin/mitra-ear.exe` (`ear/`, Rust, about 12 MB) records the microphone and the system's audio as two tracks in half-minute pieces, and reports which programs are recording from a microphone. `bin/mitra-open.exe` is another small Rust program (316 KB): Windows starts it when you open a file from Explorer, and it starts the right app with no console window flashing.
 
 ### 3.5 Screens (`web/`, `apps/*/ui/`, JavaScript)
 
@@ -253,6 +253,19 @@ A call can run to two hours and you may be using other apps while it is written 
 | **Speed** | Accurate (Whisper medium) or Fast (the next speech model down) per recording, each with a time for that file. Times start from figures measured on the development laptop and are replaced by this device's own after its first finished job |
 | **Pause and Stop** | Pause ends after the piece in hand and frees the model. Stop ends now; the piece in hand is lost. Stopping the model on the System page, or closing TwinMind from the launcher, stops the job the same way, with its pieces kept. Closing only the window does not stop it |
 | **Seen from outside** | The launcher's Your apps page says who has the model, what for, and who is waiting; the System page lists the line; Ask Mitra shows "Waiting for a turn" with a Cancel |
+
+**A meeting as it happens (0.10.0)**
+
+| Step | How |
+|---|---|
+| **Noticing a meeting** | While TwinMind's window is open it asks its own process every five seconds which programs are recording from a microphone. The answer comes from Windows' audio sessions, read by `mitra-ear who`; nothing is listened to. If one of them is a call app (Teams, Zoom, Webex, Slack, WhatsApp, a browser and so on) a banner asks "Do you want me to record it?", with "Not this one". Someone talking near the laptop is not a meeting, and neither is a dictation tool. Nothing watches when Mitra is closed |
+| **Recording** | `mitra-ear` (Rust, about 12 MB, no model) records two tracks at 16 kHz: your microphone, and whatever the computer plays, which in a call is everyone else. Nothing joins the call. Each track is written in half-minute pieces under a temporary name and renamed when complete, so a crash loses at most the half minute in hand, and both tracks follow the wall clock so piece N covers the same half minute on each |
+| **The transcript as it grows** | Each finished piece goes through the smallest multilingual speech model (Whisper base, about 2 s per piece, 356 MB while it runs, nothing between pieces). A silent piece runs no model. A line that runs into the end of a piece is held back and heard whole with the next one. Lines are marked with your name or "Others" by track |
+| **Your notes** | A box beside the transcript; what you type is saved as you go and put in the memo as written |
+| **When you stop** | The pieces are put together into one recording per track and a mix, and the full pipeline writes the memo: speakers, the accurate speech model, notes, the check. The speaker heard on the microphone track is named as you. Recordings are kept 30 days (`keep_recordings_days`), then go to the Recycle Bin |
+| **If the app is closed mid-meeting** | The recorder ends cleanly and the Live tab offers "Write its memo" next time |
+
+Memory is flat for any length: one piece is handled at a time and everything so far is on disk. Checked on 2026-11-20 with a two-minute recording of synthesized speech played through the speakers: both tracks recorded, every sentence in the live transcript after two faults were fixed (an invented "Thank you" from the silent microphone track, and a sentence lost at a piece boundary), and a correct memo with the typed note in it. **Not yet run on a real meeting, on a real voice at the microphone, or for hours**; the live speech model is a provisional choice that gets names wrong (the memo's model does not).
 
 **Other features**
 

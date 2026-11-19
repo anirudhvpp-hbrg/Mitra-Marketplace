@@ -4,6 +4,7 @@ runtimes/
 # build output; `build.ps1` / `build.sh` make these
 bin/
 governor/target/
+ear/target/
 __pycache__/
 *.pyc
 # another project's source, kept locally for reference only

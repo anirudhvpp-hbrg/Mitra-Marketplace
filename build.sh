@@ -7,6 +7,7 @@ root="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$root/bin"
 
 (cd "$root/governor" && cargo build --release && cp target/release/mitra-governor "$root/bin/")
+(cd "$root/ear" && cargo build --release && cp target/release/mitra-ear "$root/bin/") || echo "mitra-ear was not built: live recording will be unavailable on this system"
 (cd "$root/gateway" && go build -ldflags "-s -w" -o "$root/bin/mitra-marketplace" .)
 
 python3 -m pip install --user --quiet pypdf || echo "pypdf not installed: PDF conversion will be unavailable until it is."
